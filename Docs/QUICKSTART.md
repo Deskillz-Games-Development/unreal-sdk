@@ -85,6 +85,7 @@ In your GameMode or GameInstance:
 // YourGameMode.h
 #pragma once
 #include "Core/DeskillzSDK.h"
+#include "Lobby/DeskillzDeepLinkHandler.h"
 #include "GameFramework/GameModeBase.h"
 #include "YourGameMode.generated.h"
 
@@ -96,6 +97,13 @@ class AYourGameMode : public AGameModeBase
 public:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    
+private:
+    UFUNCTION()
+    void HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params);
+    
+    UFUNCTION()
+    void HandleMatchLaunch(const FString& MatchId, const FString& AuthToken);
 };
 
 // YourGameMode.cpp
@@ -121,6 +129,14 @@ void AYourGameMode::BeginPlay()
     if (SDK->IsInitialized())
     {
         UE_LOG(LogTemp, Log, TEXT("Deskillz SDK initialized successfully!"));
+        
+        // Setup deep link handling
+        UDeskillzDeepLinkHandler* Handler = UDeskillzDeepLinkHandler::Get();
+        Handler->OnNavigationReceived.AddDynamic(this, &AYourGameMode::HandleNavigation);
+        Handler->OnMatchLaunchReceived.AddDynamic(this, &AYourGameMode::HandleMatchLaunch);
+        
+        // Check for pending deep links (if app was launched via deep link)
+        Handler->ProcessPendingDeepLinks();
     }
 }
 
@@ -128,6 +144,26 @@ void AYourGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     UDeskillzSDK::Get()->Shutdown();
     Super::EndPlay(EndPlayReason);
+}
+
+void AYourGameMode::HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params)
+{
+    switch (Action)
+    {
+        case EDeskillzNavigationAction::Tournaments:
+            UDeskillzUIManager::Get()->ShowTournamentList();
+            break;
+        case EDeskillzNavigationAction::Wallet:
+            UDeskillzUIManager::Get()->ShowWallet();
+            break;
+        // Handle other actions...
+    }
+}
+
+void AYourGameMode::HandleMatchLaunch(const FString& MatchId, const FString& AuthToken)
+{
+    UDeskillzApiService::Get()->SetAuthToken(AuthToken);
+    // Load your match level
 }
 ```
 
@@ -140,11 +176,45 @@ void AYourGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
    - Environment: Sandbox
 3. The manager auto-initializes on BeginPlay
 
-Or use the Blueprint Function Library:
+## Step 5: Configure Deep Links (2 minutes)
 
-![Blueprint Init](https://docs.deskillz.games/images/bp_init.png)
+### iOS - Info.plist
 
-## Step 5: Add Tournament Entry Flow (3 minutes)
+Add to your iOS build settings or directly to Info.plist:
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLName</key>
+        <string>com.yourstudio.yourgame</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>deskillz</string>
+            <string>yourgame</string>
+        </array>
+    </dict>
+</array>
+```
+
+### Android - AndroidManifest.xml
+
+Add to your Android manifest:
+
+```xml
+<activity android:name=".MainActivity"
+          android:launchMode="singleTask">
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="deskillz" />
+        <data android:scheme="yourgame" />
+    </intent-filter>
+</activity>
+```
+
+## Step 6: Add Tournament Entry Flow (3 minutes)
 
 ### Show Tournament List
 
@@ -197,7 +267,7 @@ void AYourGameMode::OnMatchFailed(const FString& Reason)
 }
 ```
 
-## Step 6: Submit Score (3 minutes)
+## Step 7: Submit Score (2 minutes)
 
 When gameplay ends, submit the player's score:
 
@@ -234,13 +304,19 @@ void AYourGameMode::OnScoreSubmitted(bool bSuccess, const FString& Message)
 }
 ```
 
-## Step 7: Test Your Integration (2 minutes)
+## Step 8: Test Your Integration (2 minutes)
 
 ### In Editor
 
 1. Run PIE (Play In Editor)
 2. Check Output Log for "Deskillz SDK initialized successfully!"
-3. Open tournament list
+3. Test deep link handling:
+
+```cpp
+// In console or test code
+UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
+```
+
 4. Enter a sandbox tournament
 5. Play your game
 6. Verify score submission
@@ -262,6 +338,7 @@ Here's a complete minimal integration:
 
 #include "CoreMinimal.h"
 #include "Core/DeskillzSDK.h"
+#include "Lobby/DeskillzDeepLinkHandler.h"
 #include "Match/DeskillzMatchManager.h"
 #include "Match/DeskillzMatchmaking.h"
 #include "Security/DeskillzSecureSubmitter.h"
@@ -289,23 +366,61 @@ private:
     UFUNCTION()
     void OnScoreSubmitted(bool bSuccess, const FString& Message);
     
+    UFUNCTION()
+    void HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params);
+    
+    UFUNCTION()
+    void HandleMatchLaunch(const FString& MatchId, const FString& AuthToken);
+    
     FString CurrentMatchId;
     float MatchStartTime;
 };
 
 // MinimalDeskillzGame.cpp
 #include "MinimalDeskillzGame.h"
+#include "UI/DeskillzUIManager.h"
+#include "Network/DeskillzApiService.h"
 
 void AMinimalDeskillzGame::BeginPlay()
 {
     Super::BeginPlay();
     
+    // Initialize SDK
     FDeskillzConfig Config;
     Config.GameId = TEXT("your_game_id");
     Config.ApiKey = TEXT("your_api_key");
     Config.Environment = EDeskillzEnvironment::Sandbox;
-    
     UDeskillzSDK::Get()->Initialize(Config);
+    
+    // Setup deep link handling
+    UDeskillzDeepLinkHandler* Handler = UDeskillzDeepLinkHandler::Get();
+    Handler->OnNavigationReceived.AddDynamic(this, &AMinimalDeskillzGame::HandleNavigation);
+    Handler->OnMatchLaunchReceived.AddDynamic(this, &AMinimalDeskillzGame::HandleMatchLaunch);
+    Handler->ProcessPendingDeepLinks();
+}
+
+void AMinimalDeskillzGame::HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params)
+{
+    switch (Action)
+    {
+        case EDeskillzNavigationAction::Tournaments:
+            UDeskillzUIManager::Get()->ShowTournamentList();
+            break;
+        case EDeskillzNavigationAction::Wallet:
+            UDeskillzUIManager::Get()->ShowWallet();
+            break;
+        default:
+            break;
+    }
+}
+
+void AMinimalDeskillzGame::HandleMatchLaunch(const FString& MatchId, const FString& AuthToken)
+{
+    UDeskillzApiService::Get()->SetAuthToken(AuthToken);
+    CurrentMatchId = MatchId;
+    MatchStartTime = GetWorld()->GetTimeSeconds();
+    UDeskillzMatchManager::Get()->StartMatch(MatchId);
+    // TODO: Start your actual gameplay here
 }
 
 void AMinimalDeskillzGame::EnterTournament(const FString& TournamentId)
@@ -319,16 +434,13 @@ void AMinimalDeskillzGame::OnMatchFound(const FDeskillzMatch& Match)
 {
     CurrentMatchId = Match.MatchId;
     MatchStartTime = GetWorld()->GetTimeSeconds();
-    
     UDeskillzMatchManager::Get()->StartMatch(Match.MatchId);
-    
     // TODO: Start your actual gameplay here
 }
 
 void AMinimalDeskillzGame::SubmitGameScore(int64 Score)
 {
     float Duration = GetWorld()->GetTimeSeconds() - MatchStartTime;
-    
     UDeskillzSecureSubmitter* Submitter = UDeskillzSecureSubmitter::Get();
     Submitter->OnScoreSubmitted.AddDynamic(this, &AMinimalDeskillzGame::OnScoreSubmitted);
     Submitter->SubmitScore(Score, Duration);
@@ -347,11 +459,12 @@ void AMinimalDeskillzGame::OnScoreSubmitted(bool bSuccess, const FString& Messag
 
 Now that you have basic integration working:
 
-1. **Add UI** - Implement tournament browser, wallet display
-2. **Add Analytics** - Track player events for insights
-3. **Configure Anti-Cheat** - Protect your game from cheaters
-4. **Test Thoroughly** - Use sandbox for comprehensive testing
-5. **Go Live** - Switch to Production and launch!
+1. **Handle Deep Links** - Ensure your game responds to navigation and match launch events
+2. **Add UI** - Implement tournament browser, wallet display
+3. **Add Analytics** - Track player events for insights
+4. **Configure Anti-Cheat** - Protect your game from cheaters
+5. **Test Thoroughly** - Use sandbox for comprehensive testing
+6. **Go Live** - Switch to Production and launch!
 
 ## Resources
 
@@ -373,6 +486,13 @@ if (!UDeskillzSDK::Get()->IsInitialized())
     // Enable logging for details
 }
 ```
+
+### Deep Links Not Working
+
+1. Verify URL schemes are registered in Info.plist / AndroidManifest.xml
+2. Check that `ProcessPendingDeepLinks()` is called after initialization
+3. Test with `SimulateDeepLink()` first
+4. Enable verbose logging to see incoming deep links
 
 ### Module Not Found
 

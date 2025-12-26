@@ -1,8 +1,8 @@
 // Copyright Deskillz Games. All Rights Reserved.
 // DeskillzDeepLinkHandler.h - Dedicated deep link handler for centralized lobby architecture
 // 
-// This is a NEW file for the centralized lobby architecture.
-// It handles deep links from the main Deskillz app that launch game matches.
+// This file handles deep links from the main Deskillz app that launch game matches
+// AND navigation deep links from the website (tournaments, wallet, profile, etc.)
 
 #pragma once
 
@@ -10,6 +10,32 @@
 #include "UObject/NoExportTypes.h"
 #include "DeskillzLobbyTypes.h"
 #include "DeskillzDeepLinkHandler.generated.h"
+
+// =============================================================================
+// NAVIGATION ACTION ENUM
+// =============================================================================
+
+/**
+ * Navigation actions from deep links (when app is opened from website).
+ * These are non-match deep links that navigate to specific screens.
+ */
+UENUM(BlueprintType)
+enum class EDeskillzNavigationAction : uint8
+{
+	None			UMETA(DisplayName = "None"),
+	Tournaments		UMETA(DisplayName = "Tournaments"),
+	Wallet			UMETA(DisplayName = "Wallet"),
+	Profile			UMETA(DisplayName = "Profile"),
+	Game			UMETA(DisplayName = "Game"),
+	Settings		UMETA(DisplayName = "Settings")
+};
+
+// =============================================================================
+// DELEGATE DECLARATIONS
+// =============================================================================
+
+/** Delegate for navigation deep links (non-match) */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnNavigationReceived, EDeskillzNavigationAction, Action, const FString&, TargetId);
 
 /**
  * Deep Link Handler for Centralized Lobby
@@ -19,25 +45,47 @@
  * the game app is launched via deep link with match parameters.
  * 
  * This handler:
- * 1. Receives deep links from the main Deskillz app
- * 2. Parses match parameters (match ID, player token, settings)
- * 3. Validates the launch data
- * 4. Triggers OnMatchReady when game should start
+ * 1. Receives deep links from the main Deskillz app/website
+ * 2. Detects if it's a navigation link (tournaments, wallet, etc.) or match launch
+ * 3. For navigation: Triggers OnNavigationReceived
+ * 4. For matches: Parses match parameters and triggers OnMatchReady
  * 
  * Deep Link Formats:
- *   deskillz://launch?matchId=xxx&token=yyy&...
- *   deskillz://match/start?matchId=xxx&token=yyy&...
- *   https://deskillz.games/game/mygame/launch?matchId=xxx&...
+ *   Navigation:
+ *     deskillz://tournaments
+ *     deskillz://wallet
+ *     deskillz://profile
+ *     deskillz://game?id=xxx
+ *     deskillz://settings
+ *   
+ *   Match Launch:
+ *     deskillz://launch?matchId=xxx&token=yyy&...
+ *     deskillz://match/start?matchId=xxx&token=yyy&...
+ *     https://deskillz.games/game/mygame/launch?matchId=xxx&...
  * 
  * Usage in Game:
  * 
  *   // In your GameMode or Manager
  *   UDeskillzDeepLinkHandler* Handler = UDeskillzDeepLinkHandler::Get();
+ *   Handler->OnNavigationReceived.AddDynamic(this, &AMyGameMode::OnNavigation);
  *   Handler->OnMatchReady.AddDynamic(this, &AMyGameMode::OnMatchReady);
+ *   
+ *   void AMyGameMode::OnNavigation(EDeskillzNavigationAction Action, const FString& TargetId)
+ *   {
+ *       switch (Action)
+ *       {
+ *           case EDeskillzNavigationAction::Tournaments:
+ *               ShowTournamentsUI();
+ *               break;
+ *           case EDeskillzNavigationAction::Wallet:
+ *               ShowWalletUI();
+ *               break;
+ *           // ... etc
+ *       }
+ *   }
  *   
  *   void AMyGameMode::OnMatchReady(const FDeskillzMatchLaunchData& LaunchData)
  *   {
- *       // Start the match with the provided parameters
  *       StartMatch(LaunchData.MatchId, LaunchData.DurationSeconds, LaunchData.RandomSeed);
  *   }
  */
@@ -91,7 +139,7 @@ public:
 	 * Called automatically by platform handler, or manually for testing
 	 * 
 	 * @param URL The deep link URL
-	 * @return true if URL was a valid Deskillz launch link
+	 * @return true if URL was a valid Deskillz deep link (navigation or launch)
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Deskillz|Lobby")
 	bool HandleDeepLink(const FString& URL);
@@ -178,6 +226,10 @@ public:
 	// Events
 	// ========================================================================
 	
+	/** Called when a navigation deep link is received (not a match launch) */
+	UPROPERTY(BlueprintAssignable, Category = "Deskillz|Lobby")
+	FOnNavigationReceived OnNavigationReceived;
+	
 	/** Called when a match launch is received from deep link */
 	UPROPERTY(BlueprintAssignable, Category = "Deskillz|Lobby")
 	FOnMatchLaunchReceived OnMatchLaunchReceived;
@@ -245,7 +297,13 @@ protected:
 	// Internal Methods
 	// ========================================================================
 	
-	/** Check if URL is a launch deep link */
+	/** Check if URL is a navigation deep link (tournaments, wallet, etc.) */
+	bool IsNavigationDeepLink(const FString& URL) const;
+	
+	/** Parse navigation deep link and extract action/target */
+	bool ParseNavigationLink(const FString& URL, EDeskillzNavigationAction& OutAction, FString& OutTargetId) const;
+	
+	/** Check if URL is a launch deep link (match start) */
 	bool IsLaunchDeepLink(const FString& URL) const;
 	
 	/** Parse query parameters from URL */

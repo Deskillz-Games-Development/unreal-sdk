@@ -87,10 +87,28 @@ bool UDeskillzDeepLinkHandler::HandleDeepLink(const FString& URL)
 	
 	UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Handling deep link: %s"), *URL);
 	
-	// Check if this is a launch deep link
+	// =====================================================
+	// STEP 1: Check for navigation deep links FIRST
+	// These are simpler links like deskillz://tournaments
+	// =====================================================
+	EDeskillzNavigationAction NavAction;
+	FString NavTargetId;
+	if (ParseNavigationLink(URL, NavAction, NavTargetId))
+	{
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Navigation deep link detected - Action: %d, Target: %s"), 
+			static_cast<int32>(NavAction), *NavTargetId);
+		
+		// Broadcast navigation event
+		OnNavigationReceived.Broadcast(NavAction, NavTargetId);
+		return true;
+	}
+	
+	// =====================================================
+	// STEP 2: Check if this is a match launch deep link
+	// =====================================================
 	if (!IsLaunchDeepLink(URL))
 	{
-		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Not a launch deep link, ignoring"));
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Not a recognized deep link, ignoring"));
 		return false;
 	}
 	
@@ -116,6 +134,141 @@ bool UDeskillzDeepLinkHandler::HandleDeepLink(const FString& URL)
 	
 	return true;
 }
+
+// =============================================================================
+// NAVIGATION DEEP LINK PARSING
+// =============================================================================
+
+bool UDeskillzDeepLinkHandler::IsNavigationDeepLink(const FString& URL) const
+{
+	FString LowerURL = URL.ToLower();
+	
+	// Navigation links don't have matchId parameter
+	if (LowerURL.Contains(TEXT("matchid=")))
+	{
+		return false;
+	}
+	
+	// Check for navigation paths
+	return LowerURL.Contains(TEXT("://tournaments")) ||
+		   LowerURL.Contains(TEXT("://tournament")) ||
+		   LowerURL.Contains(TEXT("://wallet")) ||
+		   LowerURL.Contains(TEXT("://profile")) ||
+		   LowerURL.Contains(TEXT("://settings")) ||
+		   (LowerURL.Contains(TEXT("://game")) && !LowerURL.Contains(TEXT("matchid=")));
+}
+
+bool UDeskillzDeepLinkHandler::ParseNavigationLink(const FString& URL, EDeskillzNavigationAction& OutAction, FString& OutTargetId) const
+{
+	OutAction = EDeskillzNavigationAction::None;
+	OutTargetId = TEXT("");
+	
+	if (URL.IsEmpty())
+	{
+		return false;
+	}
+	
+	// First check if it's a navigation link at all
+	if (!IsNavigationDeepLink(URL))
+	{
+		return false;
+	}
+	
+	// Find the path after ://
+	int32 SchemeEnd = URL.Find(TEXT("://"));
+	if (SchemeEnd == INDEX_NONE)
+	{
+		return false;
+	}
+	
+	FString Remainder = URL.Mid(SchemeEnd + 3);
+	
+	// Split path from query
+	FString Path;
+	FString Query;
+	int32 QueryStart = Remainder.Find(TEXT("?"));
+	if (QueryStart != INDEX_NONE)
+	{
+		Path = Remainder.Left(QueryStart);
+		Query = Remainder.Mid(QueryStart + 1);
+	}
+	else
+	{
+		Path = Remainder;
+	}
+	
+	// Remove trailing slashes and convert to lowercase
+	Path.TrimEndInline();
+	while (Path.EndsWith(TEXT("/")))
+	{
+		Path = Path.LeftChop(1);
+	}
+	Path = Path.ToLower();
+	
+	// Parse based on path
+	if (Path == TEXT("tournaments") || Path == TEXT("tournament"))
+	{
+		OutAction = EDeskillzNavigationAction::Tournaments;
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Tournaments"));
+		return true;
+	}
+	else if (Path == TEXT("wallet"))
+	{
+		OutAction = EDeskillzNavigationAction::Wallet;
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Wallet"));
+		return true;
+	}
+	else if (Path == TEXT("profile"))
+	{
+		OutAction = EDeskillzNavigationAction::Profile;
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Profile"));
+		return true;
+	}
+	else if (Path == TEXT("settings"))
+	{
+		OutAction = EDeskillzNavigationAction::Settings;
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Settings"));
+		return true;
+	}
+	else if (Path == TEXT("game") || Path == TEXT("games"))
+	{
+		// Extract game ID from query string
+		TMap<FString, FString> Params = ParseQueryParameters(URL);
+		
+		if (Params.Contains(TEXT("id")))
+		{
+			OutTargetId = URLDecode(Params[TEXT("id")]);
+			OutAction = EDeskillzNavigationAction::Game;
+			UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Game (ID: %s)"), *OutTargetId);
+			return true;
+		}
+		else if (Params.Contains(TEXT("gameId")))
+		{
+			OutTargetId = URLDecode(Params[TEXT("gameId")]);
+			OutAction = EDeskillzNavigationAction::Game;
+			UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Game (ID: %s)"), *OutTargetId);
+			return true;
+		}
+		else if (Params.Contains(TEXT("game_id")))
+		{
+			OutTargetId = URLDecode(Params[TEXT("game_id")]);
+			OutAction = EDeskillzNavigationAction::Game;
+			UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Game (ID: %s)"), *OutTargetId);
+			return true;
+		}
+		
+		// Game path without ID - still valid, just show game list
+		OutAction = EDeskillzNavigationAction::Game;
+		UE_LOG(LogTemp, Log, TEXT("[DeskillzDeepLinkHandler] Parsed navigation: Game (no specific ID)"));
+		return true;
+	}
+	
+	return false;
+}
+
+// =============================================================================
+// MATCH LAUNCH DEEP LINK PARSING
+// =============================================================================
 
 FDeskillzMatchLaunchData UDeskillzDeepLinkHandler::ParseLaunchURL(const FString& URL) const
 {
@@ -351,7 +504,7 @@ void UDeskillzDeepLinkHandler::ProcessLaunchData(const FDeskillzMatchLaunchData&
 
 bool UDeskillzDeepLinkHandler::IsLaunchDeepLink(const FString& URL) const
 {
-	// Check for custom scheme
+	// Check for custom scheme launch paths
 	if (URL.StartsWith(URLScheme + TEXT("://launch")) ||
 		URL.StartsWith(URLScheme + TEXT("://match/start")))
 	{
@@ -365,7 +518,7 @@ bool UDeskillzDeepLinkHandler::IsLaunchDeepLink(const FString& URL) const
 		return true;
 	}
 	
-	// Check for required parameters
+	// Check for required match parameters
 	if (URL.Contains(TEXT("matchId=")) && URL.Contains(TEXT("token=")))
 	{
 		return true;
