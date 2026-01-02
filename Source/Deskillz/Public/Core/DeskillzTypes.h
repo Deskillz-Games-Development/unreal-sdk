@@ -44,14 +44,12 @@ enum class EDeskillzEnvironment : uint8
 UENUM(BlueprintType)
 enum class EDeskillzCurrency : uint8
 {
-	BTC              UMETA(DisplayName = "Bitcoin"),
-	ETH              UMETA(DisplayName = "Ethereum"),
-	SOL              UMETA(DisplayName = "Solana"),
-	XRP              UMETA(DisplayName = "Ripple"),
-	BNB              UMETA(DisplayName = "Binance Coin"),
-	USDT             UMETA(DisplayName = "Tether"),
-	USDC             UMETA(DisplayName = "USD Coin"),
-	Platform         UMETA(DisplayName = "Platform Credits")
+	BNB              UMETA(DisplayName = "BNB (BSC)"),
+	USDT_BSC         UMETA(DisplayName = "USDT (BSC)"),
+	USDT_TRON        UMETA(DisplayName = "USDT (TRON)"),
+	USDC_BSC         UMETA(DisplayName = "USDC (BSC)"),
+	USDC_TRON        UMETA(DisplayName = "USDC (TRON)"),
+	Free             UMETA(DisplayName = "Free Entry")
 };
 
 /**
