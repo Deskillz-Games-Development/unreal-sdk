@@ -1,6 +1,6 @@
 # Deskillz SDK - API Reference
 
-**SDK Version: 2.2.0** | Complete API documentation for the Deskillz Unity and Unreal Engine SDKs.
+**SDK Version: 2.3.0** | Complete API documentation for the Deskillz Unity and Unreal Engine SDKs.
 
 ## Table of Contents
 
@@ -9,7 +9,8 @@
 - [Security Classes](#security-classes)
 - [Network Classes](#network-classes)
 - [Deep Link Classes](#deep-link-classes)
-- [Private Rooms Classes](#private-rooms-classes) ← NEW in v2.2
+- [Private Rooms Classes](#private-rooms-classes)
+- [Auto-Updater Classes](#auto-updater-classes) ← NEW in v2.3
 - [Analytics Classes](#analytics-classes)
 - [Platform Classes](#platform-classes)
 - [UI Classes](#ui-classes)
@@ -647,17 +648,172 @@ struct FRoomPlayer
 };
 ```
 
+## Auto-Updater Classes ← NEW in v2.3
+
+### UDeskillzUpdater (Unreal)
+Automatic update checker singleton.
+
+| Method | Description |
+|--------|-------------|
+| `Get()` | Get singleton instance |
+| `SetCurrentVersion(Version, VersionCode)` | Set current app version for comparison |
+| `CheckForUpdates()` | Check server for new version |
+| `GetLatestVersion()` | Get latest available version string |
+| `IsUpdateAvailable()` | Check if update exists |
+| `IsUpdateRequired()` | Check if update is forced/mandatory |
+| `OpenDownloadPage()` | Open APK download URL in browser |
+| `SkipVersion(Version)` | Mark version as skipped (optional only) |
+
+| Delegate | Parameters | Description |
+|----------|------------|-------------|
+| `OnUpdateCheckStarted` | None | Update check has begun |
+| `OnUpdateAvailable` | FUpdateInfo | Optional update available |
+| `OnForceUpdateRequired` | FUpdateInfo | Mandatory update required |
+| `OnNoUpdateNeeded` | None | App is up to date |
+| `OnUpdateCheckFailed` | FString Error | Check failed (network/parse error) |
+| `OnUpdateAccepted` | FUpdateInfo | User accepted update |
+| `OnUpdateSkipped` | FUpdateInfo | User skipped optional update |
+
+### DeskillzUpdater (Unity)
+Unity auto-updater singleton.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Instance` | DeskillzUpdater | Singleton instance |
+| `CurrentVersion` | string | Current app version string |
+| `CurrentVersionCode` | int | Current app version code |
+
+| Method | Description |
+|--------|-------------|
+| `CheckForUpdates()` | Check server for new version |
+| `StartUpdate()` | Open download page in browser |
+| `SkipUpdate()` | Skip current optional update |
+
+| Event | Parameters | Description |
+|-------|------------|-------------|
+| `OnUpdateCheckStarted` | None | Check started |
+| `OnUpdateAvailable` | UpdateInfo | Optional update ready |
+| `OnForcedUpdateRequired` | UpdateInfo | Must update to continue |
+| `OnNoUpdateNeeded` | None | Already on latest |
+| `OnUpdateCheckFailed` | string | Error message |
+| `OnUpdateAccepted` | UpdateInfo | User clicked Update |
+| `OnUpdateSkipped` | UpdateInfo | User clicked Skip |
+
+### DeskillzUpdaterUI (Unity)
+Pre-built update dialog UI.
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Instance` | DeskillzUpdaterUI | - | Singleton instance |
+| `ShowOnUpdateAvailable` | bool | true | Auto-show for optional updates |
+| `BlockOnForcedUpdate` | bool | true | Block app for forced updates |
+| `UpdateTitle` | string | "Update Available" | Dialog title |
+| `UpdateButtonText` | string | "Update Now" | Update button text |
+| `SkipButtonText` | string | "Later" | Skip button text |
+| `Theme` | UpdateUITheme | Dark | Dialog theme |
+
+| Method | Description |
+|--------|-------------|
+| `ShowUpdateDialog(info, blocking)` | Manually show update dialog |
+| `HideDialog()` | Hide current dialog |
+
+### FUpdateInfo / UpdateInfo
+Update information struct.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `LatestVersion` | string | Latest version string (e.g., "1.2.0") |
+| `VersionCode` | int | Numeric version code (e.g., 10200) |
+| `UpdateAvailable` | bool | Whether an update exists |
+| `IsForced` | bool | Whether update is mandatory |
+| `DownloadUrl` | string | APK download URL |
+| `FileSize` | long | File size in bytes |
+| `FileSizeFormatted` | string | Human-readable size (e.g., "52.4 MB") |
+| `ReleaseNotes` | string | Changelog/release notes text |
+
+### Usage Example (Unreal)
+```cpp
+#include "Core/DeskillzUpdater.h"
+
+void AMyGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
+    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
+    
+    Updater->OnUpdateAvailable.AddDynamic(this, &AMyGameMode::HandleOptionalUpdate);
+    Updater->OnForceUpdateRequired.AddDynamic(this, &AMyGameMode::HandleForcedUpdate);
+    Updater->OnNoUpdateNeeded.AddDynamic(this, &AMyGameMode::HandleNoUpdate);
+    Updater->OnUpdateCheckFailed.AddDynamic(this, &AMyGameMode::HandleCheckFailed);
+    
+    Updater->CheckForUpdates();
+}
+
+void AMyGameMode::HandleOptionalUpdate(const FUpdateInfo& Info)
+{
+    UE_LOG(LogTemp, Log, TEXT("Update available: %s (%s)"), 
+        *Info.LatestVersion, *Info.FileSizeFormatted);
+    // Show optional update UI
+}
+
+void AMyGameMode::HandleForcedUpdate(const FUpdateInfo& Info)
+{
+    UE_LOG(LogTemp, Warning, TEXT("Required update: %s"), *Info.LatestVersion);
+    // Show blocking update UI - user must update
+}
+```
+
+### Usage Example (Unity)
+```csharp
+using Deskillz;
+
+public class UpdateManager : MonoBehaviour
+{
+    void Start()
+    {
+        DeskillzUpdater updater = DeskillzUpdater.Instance;
+        updater.CurrentVersion = Application.version;
+        updater.CurrentVersionCode = GetVersionCode();
+        
+        DeskillzUpdater.OnUpdateAvailable += HandleOptionalUpdate;
+        DeskillzUpdater.OnForcedUpdateRequired += HandleForcedUpdate;
+        DeskillzUpdater.OnNoUpdateNeeded += () => Debug.Log("Up to date!");
+        
+        updater.CheckForUpdates();
+    }
+    
+    void HandleOptionalUpdate(UpdateInfo info)
+    {
+        Debug.Log($"Update available: {info.LatestVersion} ({info.FileSizeFormatted})");
+        // Show optional update dialog
+    }
+    
+    void HandleForcedUpdate(UpdateInfo info)
+    {
+        Debug.Log($"Required update: {info.LatestVersion}");
+        // Show blocking dialog - must update to continue
+    }
+    
+    int GetVersionCode()
+    {
+        string[] parts = Application.version.Split('.');
+        return int.Parse(parts[0]) * 10000 + 
+               int.Parse(parts[1]) * 100 + 
+               int.Parse(parts[2]);
+    }
+}
 ---
 
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.3.0 | Jan 2025 | Added Auto-Updater (DeskillzUpdater, DeskillzUpdaterUI) |
 | 2.2.0 | Dec 2024 | Added Private Rooms (UDeskillzRooms, UDeskillzPrivateRoomUI) |
 | 2.1.0 | Dec 2024 | Navigation deep links, improved lobby integration |
 | 2.0.0 | Nov 2024 | Centralized lobby architecture, deep link handler |
 | 1.x | Legacy | SDK-based matchmaking (deprecated) |
-
 ---
 
 See [Integration Guide](INTEGRATION_GUIDE.md) for detailed examples and [Quick Start](QUICKSTART.md) for getting started.

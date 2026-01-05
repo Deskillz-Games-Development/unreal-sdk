@@ -85,7 +85,6 @@ In your GameMode or GameInstance:
 // YourGameMode.h
 #pragma once
 #include "Core/DeskillzSDK.h"
-#include "Lobby/DeskillzDeepLinkHandler.h"
 #include "GameFramework/GameModeBase.h"
 #include "YourGameMode.generated.h"
 
@@ -97,13 +96,6 @@ class AYourGameMode : public AGameModeBase
 public:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-    
-private:
-    UFUNCTION()
-    void HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params);
-    
-    UFUNCTION()
-    void HandleMatchLaunch(const FString& MatchId, const FString& AuthToken);
 };
 
 // YourGameMode.cpp
@@ -129,14 +121,6 @@ void AYourGameMode::BeginPlay()
     if (SDK->IsInitialized())
     {
         UE_LOG(LogTemp, Log, TEXT("Deskillz SDK initialized successfully!"));
-        
-        // Setup deep link handling
-        UDeskillzDeepLinkHandler* Handler = UDeskillzDeepLinkHandler::Get();
-        Handler->OnNavigationReceived.AddDynamic(this, &AYourGameMode::HandleNavigation);
-        Handler->OnMatchLaunchReceived.AddDynamic(this, &AYourGameMode::HandleMatchLaunch);
-        
-        // Check for pending deep links (if app was launched via deep link)
-        Handler->ProcessPendingDeepLinks();
     }
 }
 
@@ -144,26 +128,6 @@ void AYourGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     UDeskillzSDK::Get()->Shutdown();
     Super::EndPlay(EndPlayReason);
-}
-
-void AYourGameMode::HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params)
-{
-    switch (Action)
-    {
-        case EDeskillzNavigationAction::Tournaments:
-            UDeskillzUIManager::Get()->ShowTournamentList();
-            break;
-        case EDeskillzNavigationAction::Wallet:
-            UDeskillzUIManager::Get()->ShowWallet();
-            break;
-        // Handle other actions...
-    }
-}
-
-void AYourGameMode::HandleMatchLaunch(const FString& MatchId, const FString& AuthToken)
-{
-    UDeskillzApiService::Get()->SetAuthToken(AuthToken);
-    // Load your match level
 }
 ```
 
@@ -176,45 +140,11 @@ void AYourGameMode::HandleMatchLaunch(const FString& MatchId, const FString& Aut
    - Environment: Sandbox
 3. The manager auto-initializes on BeginPlay
 
-## Step 5: Configure Deep Links (2 minutes)
+Or use the Blueprint Function Library:
 
-### iOS - Info.plist
+![Blueprint Init](https://docs.deskillz.games/images/bp_init.png)
 
-Add to your iOS build settings or directly to Info.plist:
-
-```xml
-<key>CFBundleURLTypes</key>
-<array>
-    <dict>
-        <key>CFBundleURLName</key>
-        <string>com.yourstudio.yourgame</string>
-        <key>CFBundleURLSchemes</key>
-        <array>
-            <string>deskillz</string>
-            <string>yourgame</string>
-        </array>
-    </dict>
-</array>
-```
-
-### Android - AndroidManifest.xml
-
-Add to your Android manifest:
-
-```xml
-<activity android:name=".MainActivity"
-          android:launchMode="singleTask">
-    <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="deskillz" />
-        <data android:scheme="yourgame" />
-    </intent-filter>
-</activity>
-```
-
-## Step 6: Add Tournament Entry Flow (3 minutes)
+## Step 5: Add Tournament Entry Flow (3 minutes)
 
 ### Show Tournament List
 
@@ -267,7 +197,7 @@ void AYourGameMode::OnMatchFailed(const FString& Reason)
 }
 ```
 
-## Step 7: Submit Score (2 minutes)
+## Step 6: Submit Score (3 minutes)
 
 When gameplay ends, submit the player's score:
 
@@ -304,19 +234,13 @@ void AYourGameMode::OnScoreSubmitted(bool bSuccess, const FString& Message)
 }
 ```
 
-## Step 8: Test Your Integration (2 minutes)
+## Step 7: Test Your Integration (2 minutes)
 
 ### In Editor
 
 1. Run PIE (Play In Editor)
 2. Check Output Log for "Deskillz SDK initialized successfully!"
-3. Test deep link handling:
-
-```cpp
-// In console or test code
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
-```
-
+3. Open tournament list
 4. Enter a sandbox tournament
 5. Play your game
 6. Verify score submission
@@ -328,6 +252,124 @@ The Sandbox environment:
 - Provides instant matchmaking
 - Allows testing all features safely
 
+## Step 8: Enable Auto-Updates (Recommended) ← NEW in v2.3
+
+Ensure players always have the latest version of your game. The SDK auto-updater checks for updates when the app launches and prompts users to update.
+
+### Unreal Engine
+
+```cpp
+#include "Core/DeskillzUpdater.h"
+
+void AYourGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    // Initialize SDK first (Step 4 code here)
+    // ...
+    
+    // Set current version (must match your build's version)
+    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
+    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
+    
+    // Subscribe to update events
+    Updater->OnForceUpdateRequired.AddDynamic(this, &AYourGameMode::HandleForcedUpdate);
+    Updater->OnUpdateAvailable.AddDynamic(this, &AYourGameMode::HandleOptionalUpdate);
+    Updater->OnNoUpdateNeeded.AddDynamic(this, &AYourGameMode::HandleNoUpdate);
+    
+    // Check for updates
+    Updater->CheckForUpdates();
+}
+
+void AYourGameMode::HandleForcedUpdate(const FUpdateInfo& Info)
+{
+    // REQUIRED: Show blocking dialog - user MUST update to continue
+    UE_LOG(LogTemp, Warning, TEXT("Required update: %s"), *Info.LatestVersion);
+    ShowForcedUpdateUI(Info.DownloadUrl, Info.ReleaseNotes);
+}
+
+void AYourGameMode::HandleOptionalUpdate(const FUpdateInfo& Info)
+{
+    // Optional: Show update prompt with Update/Skip buttons
+    UE_LOG(LogTemp, Log, TEXT("Update available: %s (%s)"), 
+        *Info.LatestVersion, *Info.FileSizeFormatted);
+    ShowOptionalUpdateUI(Info);
+}
+
+void AYourGameMode::HandleNoUpdate()
+{
+    // App is up to date - continue to game
+    UE_LOG(LogTemp, Log, TEXT("App is up to date"));
+    StartGame();
+}
+```
+
+### Unity
+
+```csharp
+using Deskillz;
+
+void Start()
+{
+    // Initialize SDK first (Step 4 code here)
+    // ...
+    
+    // Set current version
+    DeskillzUpdater.Instance.CurrentVersion = Application.version;
+    DeskillzUpdater.Instance.CurrentVersionCode = GetVersionCode();
+    
+    // Option 1: Use built-in UI (simplest)
+    DeskillzUpdaterUI.Instance.ShowOnUpdateAvailable = true;
+    DeskillzUpdaterUI.Instance.BlockOnForcedUpdate = true;
+    
+    // Option 2: Handle events manually
+    DeskillzUpdater.OnForcedUpdateRequired += HandleForcedUpdate;
+    DeskillzUpdater.OnUpdateAvailable += HandleOptionalUpdate;
+    DeskillzUpdater.OnNoUpdateNeeded += () => StartGame();
+    
+    // Check for updates
+    DeskillzUpdater.Instance.CheckForUpdates();
+}
+
+void HandleForcedUpdate(UpdateInfo info)
+{
+    // Show blocking dialog - must update to continue
+    Debug.Log($"Required update: {info.LatestVersion}");
+    DeskillzUpdaterUI.Instance.ShowUpdateDialog(info, blocking: true);
+}
+
+void HandleOptionalUpdate(UpdateInfo info)
+{
+    // Show optional dialog with Update/Skip buttons
+    Debug.Log($"Update available: {info.LatestVersion} ({info.FileSizeFormatted})");
+    DeskillzUpdaterUI.Instance.ShowUpdateDialog(info, blocking: false);
+}
+
+int GetVersionCode()
+{
+    string[] parts = Application.version.Split('.');
+    return int.Parse(parts[0]) * 10000 + 
+           int.Parse(parts[1]) * 100 + 
+           int.Parse(parts[2]);
+}
+```
+
+### Version Code Format
+
+Your version code must increment with each release:
+
+| Version String | Version Code |
+|----------------|--------------|
+| 1.0.0 | 10000 |
+| 1.0.1 | 10001 |
+| 1.1.0 | 10100 |
+| 1.2.0 | 10200 |
+| 2.0.0 | 20000 |
+
+**Formula:** `(major × 10000) + (minor × 100) + patch`
+
+The SDK automatically checks for updates and prompts users when a new version is available. For forced updates (security fixes, critical bugs), the app will block until the user updates.
+
 ## Complete Minimal Example
 
 Here's a complete minimal integration:
@@ -338,7 +380,7 @@ Here's a complete minimal integration:
 
 #include "CoreMinimal.h"
 #include "Core/DeskillzSDK.h"
-#include "Lobby/DeskillzDeepLinkHandler.h"
+#include "Core/DeskillzUpdater.h"
 #include "Match/DeskillzMatchManager.h"
 #include "Match/DeskillzMatchmaking.h"
 #include "Security/DeskillzSecureSubmitter.h"
@@ -367,10 +409,10 @@ private:
     void OnScoreSubmitted(bool bSuccess, const FString& Message);
     
     UFUNCTION()
-    void HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params);
+    void OnForcedUpdate(const FUpdateInfo& Info);
     
     UFUNCTION()
-    void HandleMatchLaunch(const FString& MatchId, const FString& AuthToken);
+    void OnNoUpdate();
     
     FString CurrentMatchId;
     float MatchStartTime;
@@ -378,8 +420,6 @@ private:
 
 // MinimalDeskillzGame.cpp
 #include "MinimalDeskillzGame.h"
-#include "UI/DeskillzUIManager.h"
-#include "Network/DeskillzApiService.h"
 
 void AMinimalDeskillzGame::BeginPlay()
 {
@@ -390,37 +430,26 @@ void AMinimalDeskillzGame::BeginPlay()
     Config.GameId = TEXT("your_game_id");
     Config.ApiKey = TEXT("your_api_key");
     Config.Environment = EDeskillzEnvironment::Sandbox;
+    
     UDeskillzSDK::Get()->Initialize(Config);
     
-    // Setup deep link handling
-    UDeskillzDeepLinkHandler* Handler = UDeskillzDeepLinkHandler::Get();
-    Handler->OnNavigationReceived.AddDynamic(this, &AMinimalDeskillzGame::HandleNavigation);
-    Handler->OnMatchLaunchReceived.AddDynamic(this, &AMinimalDeskillzGame::HandleMatchLaunch);
-    Handler->ProcessPendingDeepLinks();
+    // Setup auto-updater (NEW in v2.3)
+    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
+    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
+    Updater->OnForceUpdateRequired.AddDynamic(this, &AMinimalDeskillzGame::OnForcedUpdate);
+    Updater->OnNoUpdateNeeded.AddDynamic(this, &AMinimalDeskillzGame::OnNoUpdate);
+    Updater->CheckForUpdates();
 }
 
-void AMinimalDeskillzGame::HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Params)
+void AMinimalDeskillzGame::OnForcedUpdate(const FUpdateInfo& Info)
 {
-    switch (Action)
-    {
-        case EDeskillzNavigationAction::Tournaments:
-            UDeskillzUIManager::Get()->ShowTournamentList();
-            break;
-        case EDeskillzNavigationAction::Wallet:
-            UDeskillzUIManager::Get()->ShowWallet();
-            break;
-        default:
-            break;
-    }
+    // Show update required UI - block gameplay
+    // User must update to continue
 }
 
-void AMinimalDeskillzGame::HandleMatchLaunch(const FString& MatchId, const FString& AuthToken)
+void AMinimalDeskillzGame::OnNoUpdate()
 {
-    UDeskillzApiService::Get()->SetAuthToken(AuthToken);
-    CurrentMatchId = MatchId;
-    MatchStartTime = GetWorld()->GetTimeSeconds();
-    UDeskillzMatchManager::Get()->StartMatch(MatchId);
-    // TODO: Start your actual gameplay here
+    // App is current - show main menu
 }
 
 void AMinimalDeskillzGame::EnterTournament(const FString& TournamentId)
@@ -434,13 +463,16 @@ void AMinimalDeskillzGame::OnMatchFound(const FDeskillzMatch& Match)
 {
     CurrentMatchId = Match.MatchId;
     MatchStartTime = GetWorld()->GetTimeSeconds();
+    
     UDeskillzMatchManager::Get()->StartMatch(Match.MatchId);
+    
     // TODO: Start your actual gameplay here
 }
 
 void AMinimalDeskillzGame::SubmitGameScore(int64 Score)
 {
     float Duration = GetWorld()->GetTimeSeconds() - MatchStartTime;
+    
     UDeskillzSecureSubmitter* Submitter = UDeskillzSecureSubmitter::Get();
     Submitter->OnScoreSubmitted.AddDynamic(this, &AMinimalDeskillzGame::OnScoreSubmitted);
     Submitter->SubmitScore(Score, Duration);
@@ -459,10 +491,10 @@ void AMinimalDeskillzGame::OnScoreSubmitted(bool bSuccess, const FString& Messag
 
 Now that you have basic integration working:
 
-1. **Handle Deep Links** - Ensure your game responds to navigation and match launch events
-2. **Add UI** - Implement tournament browser, wallet display
-3. **Add Analytics** - Track player events for insights
-4. **Configure Anti-Cheat** - Protect your game from cheaters
+1. **Add UI** - Implement tournament browser, wallet display
+2. **Add Analytics** - Track player events for insights
+3. **Configure Anti-Cheat** - Protect your game from cheaters
+4. **Upload Your Build** - Submit APK to Developer Portal for review
 5. **Test Thoroughly** - Use sandbox for comprehensive testing
 6. **Go Live** - Switch to Production and launch!
 
@@ -487,13 +519,6 @@ if (!UDeskillzSDK::Get()->IsInitialized())
 }
 ```
 
-### Deep Links Not Working
-
-1. Verify URL schemes are registered in Info.plist / AndroidManifest.xml
-2. Check that `ProcessPendingDeepLinks()` is called after initialization
-3. Test with `SimulateDeepLink()` first
-4. Enable verbose logging to see incoming deep links
-
 ### Module Not Found
 
 Ensure `"Deskillz"` is in your `Build.cs` PublicDependencyModuleNames.
@@ -501,6 +526,16 @@ Ensure `"Deskillz"` is in your `Build.cs` PublicDependencyModuleNames.
 ### Blueprint Nodes Missing
 
 Restart the editor after enabling the plugin.
+
+### Update Check Failing
+
+```cpp
+// Enable test mode to simulate updates
+UDeskillzUpdater::Get()->SetTestMode(true);
+UDeskillzUpdater::Get()->SetTestUpdateAvailable(true);
+UDeskillzUpdater::Get()->SetTestForceUpdate(false);
+UDeskillzUpdater::Get()->CheckForUpdates();
+```
 
 ---
 

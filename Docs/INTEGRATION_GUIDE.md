@@ -14,6 +14,7 @@ Complete guide for integrating Deskillz tournaments into your Unreal Engine game
 8. [Platform Setup](#platform-setup)
 9. [Security Best Practices](#security-best-practices)
 10. [Testing](#testing)
+11. [Auto-Updater Integration](#auto-updater-integration) 
 
 ---
 
@@ -362,5 +363,156 @@ FDeskillzTestScenarios::SetupHappyPath();
 // Test deep links
 UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
 ```
+---
 
+## Auto-Updater Integration ← NEW in v2.3
+
+Ensure players always have the latest version of your game.
+
+### Basic Setup (Unreal)
+```cpp
+#include "Core/DeskillzUpdater.h"
+
+void AMyGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
+    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
+    
+    // Subscribe to update events
+    Updater->OnForceUpdateRequired.AddDynamic(this, &AMyGameMode::HandleForcedUpdate);
+    Updater->OnUpdateAvailable.AddDynamic(this, &AMyGameMode::HandleOptionalUpdate);
+    Updater->OnNoUpdateNeeded.AddDynamic(this, &AMyGameMode::HandleNoUpdate);
+    Updater->OnUpdateCheckFailed.AddDynamic(this, &AMyGameMode::HandleCheckFailed);
+    
+    // Check for updates
+    Updater->CheckForUpdates();
+}
+
+void AMyGameMode::HandleForcedUpdate(const FUpdateInfo& Info)
+{
+    // REQUIRED: Show blocking dialog - user MUST update
+    ShowForcedUpdateUI(Info.LatestVersion, Info.ReleaseNotes, Info.DownloadUrl);
+}
+
+void AMyGameMode::HandleOptionalUpdate(const FUpdateInfo& Info)
+{
+    // Optional: Show update prompt with Update/Skip buttons
+    ShowUpdatePrompt(Info.LatestVersion, Info.FileSizeFormatted);
+}
+
+void AMyGameMode::HandleNoUpdate()
+{
+    // App is up to date - continue normal flow
+    StartGame();
+}
+
+void AMyGameMode::HandleCheckFailed(const FString& Error)
+{
+    // Network error - allow game to continue
+    UE_LOG(LogTemp, Warning, TEXT("Update check failed: %s"), *Error);
+    StartGame();
+}
+```
+
+### Basic Setup (Unity)
+```csharp
+using Deskillz;
+
+void Start()
+{
+    DeskillzUpdater.Instance.CurrentVersion = Application.version;
+    DeskillzUpdater.Instance.CurrentVersionCode = GetVersionCode();
+    
+    DeskillzUpdater.OnForcedUpdateRequired += HandleForcedUpdate;
+    DeskillzUpdater.OnUpdateAvailable += HandleOptionalUpdate;
+    DeskillzUpdater.OnNoUpdateNeeded += () => StartGame();
+    DeskillzUpdater.OnUpdateCheckFailed += (error) => StartGame(); // Continue on error
+    
+    DeskillzUpdater.Instance.CheckForUpdates();
+}
+
+void HandleForcedUpdate(UpdateInfo info)
+{
+    // Show blocking UI - must update to continue
+    DeskillzUpdaterUI.Instance.ShowUpdateDialog(info, blocking: true);
+}
+
+void HandleOptionalUpdate(UpdateInfo info)
+{
+    // Show optional dialog with Update/Skip buttons
+    DeskillzUpdaterUI.Instance.ShowUpdateDialog(info, blocking: false);
+}
+```
+
+### Pre-built Update UI (Unity Only)
+
+For quick integration, use the built-in UI:
+```csharp
+// Enable automatic UI handling
+DeskillzUpdaterUI.Instance.ShowOnUpdateAvailable = true;
+DeskillzUpdaterUI.Instance.BlockOnForcedUpdate = true;
+
+// Customize appearance (optional)
+DeskillzUpdaterUI.Instance.UpdateTitle = "New Version Available!";
+DeskillzUpdaterUI.Instance.UpdateButtonText = "Update Now";
+DeskillzUpdaterUI.Instance.SkipButtonText = "Later";
+
+// Start update check - UI handles everything
+DeskillzUpdater.Instance.CheckForUpdates();
+```
+
+### Custom UI Integration
+
+Handle events and show your own UI:
+
+| Event | Action |
+|-------|--------|
+| `OnUpdateAvailable` | Show optional dialog with Update/Skip buttons |
+| `OnForcedUpdateRequired` | Show blocking dialog - Update button only |
+| `OnUpdateSkipped` | User chose to skip - continue to game |
+| `OnUpdateAccepted` | Open download page automatically |
+
+### Handling User Actions
+```csharp
+// When user clicks "Update" button
+public void OnUpdateButtonClicked()
+{
+    DeskillzUpdater.Instance.StartUpdate(); // Opens download URL
+}
+
+// When user clicks "Skip" button (optional updates only)
+public void OnSkipButtonClicked()
+{
+    DeskillzUpdater.Instance.SkipUpdate(); // Remembers skipped version
+    StartGame();
+}
+```
+
+### Testing Updates
+```csharp
+// Unity - Enable test mode
+DeskillzUpdater.Instance.TestMode = true;
+DeskillzUpdater.Instance.TestUpdateAvailable = true;
+DeskillzUpdater.Instance.TestForceUpdate = false; // or true for forced
+DeskillzUpdater.Instance.CheckForUpdates();
+```
+```cpp
+// Unreal - Enable test mode
+UDeskillzUpdater::Get()->SetTestMode(true);
+UDeskillzUpdater::Get()->SetTestUpdateAvailable(true);
+UDeskillzUpdater::Get()->SetTestForceUpdate(false);
+UDeskillzUpdater::Get()->CheckForUpdates();
+```
+
+### Best Practices
+
+1. **Always check on startup** - Call `CheckForUpdates()` when game launches
+2. **Handle forced updates properly** - Block all gameplay until updated
+3. **Graceful failures** - If check fails, allow game to continue
+4. **Show release notes** - Help users understand what's new
+5. **Test both paths** - Test optional and forced update flows
+
+---
 See [API Reference](API_REFERENCE.md) for complete method documentation.
