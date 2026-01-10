@@ -14,42 +14,7 @@ class UScrollBox;
 class UVerticalBox;
 class UEditableTextBox;
 
-/**
- * Wallet balance info
- */
-USTRUCT(BlueprintType)
-struct DESKILLZ_API FDeskillzWalletBalance
-{
-	GENERATED_BODY()
-	
-	/** Currency symbol (BTC, ETH, etc.) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	FString Symbol;
-	
-	/** Currency full name */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	FString Name;
-	
-	/** Available balance */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	double Available = 0.0;
-	
-	/** Locked/pending balance */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	double Locked = 0.0;
-	
-	/** USD equivalent */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	double UsdValue = 0.0;
-	
-	/** Icon texture */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	UTexture2D* Icon = nullptr;
-	
-	/** 24h change percentage */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wallet")
-	float Change24h = 0.0f;
-};
+// NOTE: FDeskillzWalletBalance struct is defined in DeskillzTypes.h
 
 /** Delegate for wallet actions */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCurrencySelected, const FString&, Symbol);

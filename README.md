@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/deskillz-games/unreal-sdk/releases"><img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version"></a>
+  <a href="https://github.com/deskillz-games-development/unreal-sdk/releases"><img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version"></a>
   <a href="https://unrealengine.com"><img src="https://img.shields.io/badge/unreal-4.27%2B%20%7C%205.x-black.svg" alt="Unreal"></a>
-  <a href="https://github.com/deskillz-games/unreal-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/deskillz-games-development/unreal-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
 
 <p align="center">

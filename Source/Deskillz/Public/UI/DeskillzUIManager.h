@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Blueprint/UserWidget.h"
+#include "Core/DeskillzConfig.h"
 #include "DeskillzUIManager.generated.h"
 
 class UDeskillzTournamentListWidget;
@@ -37,78 +38,7 @@ enum class EDeskillzUILayer : uint8
 	Toast
 };
 
-/**
- * UI Theme configuration
- */
-USTRUCT(BlueprintType)
-struct DESKILLZ_API FDeskillzUITheme
-{
-	GENERATED_BODY()
-	
-	/** Primary brand color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor PrimaryColor = FLinearColor(0.0f, 0.9f, 0.7f, 1.0f); // Cyan
-	
-	/** Secondary accent color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor SecondaryColor = FLinearColor(0.6f, 0.2f, 0.9f, 1.0f); // Purple
-	
-	/** Success color (wins, positive) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor SuccessColor = FLinearColor(0.2f, 0.9f, 0.4f, 1.0f); // Green
-	
-	/** Error color (losses, negative) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor ErrorColor = FLinearColor(0.9f, 0.3f, 0.3f, 1.0f); // Red
-	
-	/** Warning color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor WarningColor = FLinearColor(0.9f, 0.7f, 0.2f, 1.0f); // Yellow
-	
-	/** Background color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor BackgroundColor = FLinearColor(0.05f, 0.05f, 0.1f, 0.95f); // Dark
-	
-	/** Card/Panel background */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor CardColor = FLinearColor(0.08f, 0.08f, 0.15f, 0.9f);
-	
-	/** Text color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor TextColor = FLinearColor::White;
-	
-	/** Muted text color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor MutedTextColor = FLinearColor(0.6f, 0.6f, 0.7f, 1.0f);
-	
-	/** Border color */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	FLinearColor BorderColor = FLinearColor(0.2f, 0.2f, 0.3f, 1.0f);
-	
-	/** Corner radius for cards */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	float CornerRadius = 12.0f;
-	
-	/** Animation speed multiplier */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	float AnimationSpeed = 1.0f;
-	
-	/** Font size - small */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	int32 FontSizeSmall = 12;
-	
-	/** Font size - normal */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	int32 FontSizeNormal = 16;
-	
-	/** Font size - large */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	int32 FontSizeLarge = 24;
-	
-	/** Font size - title */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Theme")
-	int32 FontSizeTitle = 32;
-};
+// NOTE: FDeskillzUITheme struct is defined in DeskillzConfig.h
 
 /** Delegate for UI events */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeskillzUIEvent, const FString&, EventName);
