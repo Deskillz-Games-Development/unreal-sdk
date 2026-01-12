@@ -1,542 +1,879 @@
 # Deskillz SDK - Quick Start Guide
 
-Get your Unreal Engine game integrated with Deskillz tournaments in 15 minutes.
+**SDK Version: 2.6.0** | Get your game integrated with Deskillz in minutes.
 
-## Prerequisites
+## Table of Contents
 
-Before starting, ensure you have:
+1. [Prerequisites](#1-prerequisites)
+2. [Installation](#2-installation)
+3. [Basic Setup](#3-basic-setup)
+4. [Handle Match Launch](#4-handle-match-launch)
+5. [Submit Score](#5-submit-score)
+6. [Enable Auto-Updates](#6-enable-auto-updates)
+7. [Host Registration Quick Start](#7-host-registration-quick-start) - NEW
+8. [Social Game Quick Start](#8-social-game-quick-start) - NEW
+9. [Spectator Mode Quick Start](#9-spectator-mode-quick-start) - NEW
+10. [Test Your Integration](#10-test-your-integration)
 
-- [ ] Unreal Engine 4.27+ or 5.x installed
-- [ ] A Deskillz developer account ([Sign up here](https://developer.deskillz.games))
-- [ ] Your Game ID and API Key from the developer portal
-- [ ] A game ready for tournament integration
+---
 
-## Step 1: Install the SDK (2 minutes)
+## 1. Prerequisites
 
-### Option A: Copy to Plugins Folder
+Before you begin, ensure you have:
 
-1. Download the Deskillz SDK
-2. Extract to your project's `Plugins` folder:
+- [x] A Deskillz Developer Account ([Sign up here](https://developer.deskillz.games))
+- [x] Your Game ID and API Key from the Developer Portal
+- [x] Unity 2020.3+ or Unreal Engine 4.27+
+- [x] Basic knowledge of C# (Unity) or C++ (Unreal)
 
-```
-YourProject/
-├── Content/
-├── Source/
-└── Plugins/
-    └── Deskillz/           ← Extract here
-        ├── Deskillz.uplugin
-        └── Source/
-```
+---
 
-3. Regenerate project files (right-click `.uproject` → "Generate Visual Studio project files")
+## 2. Installation
 
-### Option B: Add to Engine Plugins
+### Unity
 
-For engine-wide availability, extract to:
-- **Windows**: `C:/Program Files/Epic Games/UE_5.X/Engine/Plugins/`
-- **Mac**: `/Users/Shared/Epic Games/UE_5.X/Engine/Plugins/`
+**Option A: Package Import**
+1. Download `DeskillzSDK-v2.6.0.unitypackage` from the Developer Portal
+2. In Unity: Assets > Import Package > Custom Package
+3. Select the downloaded package and import all files
 
-## Step 2: Enable the Plugin (1 minute)
-
-1. Open your project in Unreal Editor
-2. Go to **Edit → Plugins**
-3. Search for "Deskillz"
-4. Check **Enabled**
-5. Restart the editor when prompted
-
-Alternatively, add to your `.uproject` file:
-
+**Option B: Package Manager**
+Add to your `manifest.json`:
 ```json
 {
-  "Plugins": [
-    {
-      "Name": "Deskillz",
-      "Enabled": true
-    }
-  ]
+  "dependencies": {
+    "com.deskillz.sdk": "https://github.com/Deskillz-Games-Development/unity-sdk.git#v2.6.0"
+  }
 }
 ```
 
-## Step 3: Add Module Dependencies (1 minute)
+### Unreal
 
-In your game's `Build.cs` file:
+1. Download the Deskillz SDK plugin from the Developer Portal
+2. Extract to `YourProject/Plugins/DeskillzSDK/`
+3. Regenerate project files (right-click .uproject > Generate Visual Studio Files)
+4. Open project and enable plugin: Edit > Plugins > Search "Deskillz"
+
+---
+
+## 3. Basic Setup
+
+### Unity Setup
+
+Create a `DeskillzManager.cs` script and attach it to a GameObject in your initial scene:
 
 ```csharp
-public class YourGame : ModuleRules
+using UnityEngine;
+using Deskillz;
+using Deskillz.Lobby;
+
+public class DeskillzManager : MonoBehaviour
 {
-    public YourGame(ReadOnlyTargetRules Target) : base(Target)
+    // Your credentials from Developer Portal
+    [SerializeField] private string gameId = "your-game-id";
+    [SerializeField] private string apiKey = "your-api-key";
+    
+    void Awake()
     {
-        // ... existing code ...
+        // Ensure only one instance
+        DontDestroyOnLoad(gameObject);
         
-        PublicDependencyModuleNames.AddRange(new string[] {
-            "Deskillz"
-        });
+        // Configure SDK
+        var config = new DeskillzConfig
+        {
+            GameId = gameId,
+            ApiKey = apiKey,
+            Environment = DeskillzEnvironment.Sandbox, // Use Production when ready
+            EnableLogging = true
+        };
+        
+        // Initialize
+        DeskillzSDK.Instance.Initialize(config);
+        DeskillzSDK.Instance.OnInitialized += OnSDKReady;
+    }
+    
+    void OnSDKReady()
+    {
+        Debug.Log("Deskillz SDK Ready!");
+        
+        // Initialize deep link handler
+        DeepLinkHandler.Instance.Initialize();
+        DeepLinkHandler.Instance.OnMatchReady += OnMatchReady;
+        
+        // Check for pending launch
+        if (DeepLinkHandler.Instance.HasPendingLaunch())
+        {
+            DeepLinkHandler.Instance.ProcessPendingLaunch();
+        }
+    }
+    
+    void OnMatchReady(MatchLaunchData data)
+    {
+        Debug.Log($"Match ready: {data.MatchId}");
+        // Store match data and load game scene
+        GameSession.CurrentMatch = data;
+        UnityEngine.SceneManagement.SceneManager.LoadScene("GameScene");
     }
 }
 ```
 
-## Step 4: Initialize the SDK (3 minutes)
-
-### C++ Method
+### Unreal Setup
 
 In your GameMode or GameInstance:
 
 ```cpp
-// YourGameMode.h
+// MyGameMode.h
 #pragma once
-#include "Core/DeskillzSDK.h"
+#include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "YourGameMode.generated.h"
+#include "DeskillzSDK.h"
+#include "Lobby/DeepLinkHandler.h"
+#include "MyGameMode.generated.h"
 
 UCLASS()
-class AYourGameMode : public AGameModeBase
+class AMyGameMode : public AGameModeBase
 {
     GENERATED_BODY()
     
 public:
     virtual void BeginPlay() override;
-    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    
+private:
+    UFUNCTION()
+    void OnSDKReady();
+    
+    UFUNCTION()
+    void OnMatchReady(const FMatchLaunchData& Data);
 };
 
-// YourGameMode.cpp
-#include "YourGameMode.h"
+// MyGameMode.cpp
+#include "MyGameMode.h"
 
-void AYourGameMode::BeginPlay()
+void AMyGameMode::BeginPlay()
 {
     Super::BeginPlay();
     
-    // Configure SDK
     FDeskillzConfig Config;
-    Config.GameId = TEXT("your_game_id_here");      // From developer portal
-    Config.ApiKey = TEXT("your_api_key_here");      // From developer portal
-    Config.Environment = EDeskillzEnvironment::Sandbox;  // Use Production for release
-    Config.bEnableLogging = true;                   // Disable in production
-    Config.bEnableAnalytics = true;
-    Config.bEnableAntiCheat = true;
+    Config.GameId = TEXT("your-game-id");
+    Config.ApiKey = TEXT("your-api-key");
+    Config.Environment = EDeskillzEnvironment::Sandbox;
+    Config.bEnableLogging = true;
     
-    // Initialize
-    UDeskillzSDK* SDK = UDeskillzSDK::Get();
-    SDK->Initialize(Config);
+    UDeskillzSDK::Get()->Initialize(Config);
+    UDeskillzSDK::Get()->OnInitialized.AddDynamic(this, &AMyGameMode::OnSDKReady);
+}
+
+void AMyGameMode::OnSDKReady()
+{
+    UE_LOG(LogTemp, Log, TEXT("Deskillz SDK Ready!"));
     
-    if (SDK->IsInitialized())
+    UDeepLinkHandler::Get()->Initialize();
+    UDeepLinkHandler::Get()->OnMatchReady.AddDynamic(this, &AMyGameMode::OnMatchReady);
+    
+    if (UDeepLinkHandler::Get()->HasPendingLaunch())
     {
-        UE_LOG(LogTemp, Log, TEXT("Deskillz SDK initialized successfully!"));
+        UDeepLinkHandler::Get()->ProcessPendingLaunch();
     }
 }
 
-void AYourGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void AMyGameMode::OnMatchReady(const FMatchLaunchData& Data)
 {
-    UDeskillzSDK::Get()->Shutdown();
-    Super::EndPlay(EndPlayReason);
+    UE_LOG(LogTemp, Log, TEXT("Match ready: %s"), *Data.MatchId);
+    // Store and load game level
 }
 ```
 
-### Blueprint Method
+---
 
-1. Add **Deskillz Manager** actor to your level
-2. In the Details panel, set:
-   - Game ID: `your_game_id_here`
-   - API Key: `your_api_key_here`
-   - Environment: Sandbox
-3. The manager auto-initializes on BeginPlay
+## 4. Handle Match Launch
 
-Or use the Blueprint Function Library:
+When your game is launched from the Deskillz app, you receive match data via deep link.
 
-![Blueprint Init](https://docs.deskillz.games/images/bp_init.png)
+### Unity
 
-## Step 5: Add Tournament Entry Flow (3 minutes)
+```csharp
+using Deskillz;
+using Deskillz.Lobby;
 
-### Show Tournament List
-
-```cpp
-#include "UI/DeskillzUIManager.h"
-
-void AYourGameMode::ShowTournaments()
+public class GameController : MonoBehaviour
 {
-    // Show pre-built tournament list UI
-    UDeskillzUIManager::Get()->ShowTournamentList();
-}
-```
-
-### Enter Tournament Programmatically
-
-```cpp
-#include "Match/DeskillzMatchmaking.h"
-#include "Match/DeskillzMatchManager.h"
-
-void AYourGameMode::EnterTournament(const FString& TournamentId)
-{
-    UDeskillzMatchmaking* Matchmaking = UDeskillzMatchmaking::Get();
+    private MatchLaunchData matchData;
+    private float startTime;
     
-    // Bind callback
-    Matchmaking->OnMatchFound.AddDynamic(this, &AYourGameMode::OnMatchFound);
-    Matchmaking->OnMatchmakingFailed.AddDynamic(this, &AYourGameMode::OnMatchFailed);
-    
-    // Start matchmaking
-    Matchmaking->StartMatchmaking(TournamentId);
-}
-
-void AYourGameMode::OnMatchFound(const FDeskillzMatch& Match)
-{
-    UE_LOG(LogTemp, Log, TEXT("Match found! ID: %s"), *Match.MatchId);
-    
-    // Store match info
-    CurrentMatchId = Match.MatchId;
-    
-    // Start your game
-    StartGameplay();
-    
-    // Notify SDK that match has started
-    UDeskillzMatchManager::Get()->StartMatch(Match.MatchId);
-}
-
-void AYourGameMode::OnMatchFailed(const FString& Reason)
-{
-    UE_LOG(LogTemp, Error, TEXT("Matchmaking failed: %s"), *Reason);
-    // Show error to player
-}
-```
-
-## Step 6: Submit Score (3 minutes)
-
-When gameplay ends, submit the player's score:
-
-```cpp
-#include "Security/DeskillzSecureSubmitter.h"
-
-void AYourGameMode::OnGameplayComplete(int64 FinalScore, float PlayDuration)
-{
-    UDeskillzSecureSubmitter* Submitter = UDeskillzSecureSubmitter::Get();
-    
-    // Bind callback
-    Submitter->OnScoreSubmitted.AddDynamic(this, &AYourGameMode::OnScoreSubmitted);
-    
-    // Submit encrypted score
-    Submitter->SubmitScore(FinalScore, PlayDuration);
-}
-
-void AYourGameMode::OnScoreSubmitted(bool bSuccess, const FString& Message)
-{
-    if (bSuccess)
+    void Start()
     {
-        UE_LOG(LogTemp, Log, TEXT("Score submitted successfully!"));
+        // Get stored match data
+        matchData = GameSession.CurrentMatch;
         
-        // End the match
-        UDeskillzMatchManager::Get()->EndMatch(EDeskillzMatchResult::Completed);
-        
-        // Show results UI
-        UDeskillzUIManager::Get()->ShowResults();
+        if (matchData != null)
+        {
+            StartMatch();
+        }
     }
-    else
+    
+    void StartMatch()
     {
-        UE_LOG(LogTemp, Error, TEXT("Score submission failed: %s"), *Message);
+        startTime = Time.time;
+        
+        // Use the random seed for fair play
+        UnityEngine.Random.InitState(matchData.RandomSeed);
+        
+        // Show opponent info
+        Debug.Log($"Playing against: {matchData.Opponents[0].Username}");
+        Debug.Log($"Entry fee: {matchData.EntryFee} {matchData.Currency}");
+        
+        // Start your game logic
+        BeginGameplay();
     }
 }
 ```
 
-## Step 7: Test Your Integration (2 minutes)
-
-### In Editor
-
-1. Run PIE (Play In Editor)
-2. Check Output Log for "Deskillz SDK initialized successfully!"
-3. Open tournament list
-4. Enter a sandbox tournament
-5. Play your game
-6. Verify score submission
-
-### Sandbox Testing
-
-The Sandbox environment:
-- Uses test cryptocurrency (no real money)
-- Provides instant matchmaking
-- Allows testing all features safely
-
-## Step 8: Enable Auto-Updates (Recommended) ← NEW in v2.3
-
-Ensure players always have the latest version of your game. The SDK auto-updater checks for updates when the app launches and prompts users to update.
-
-### Unreal Engine
+### Unreal
 
 ```cpp
-#include "Core/DeskillzUpdater.h"
-
-void AYourGameMode::BeginPlay()
+void AGameController::BeginPlay()
 {
     Super::BeginPlay();
     
-    // Initialize SDK first (Step 4 code here)
-    // ...
-    
-    // Set current version (must match your build's version)
-    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
-    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
-    
-    // Subscribe to update events
-    Updater->OnForceUpdateRequired.AddDynamic(this, &AYourGameMode::HandleForcedUpdate);
-    Updater->OnUpdateAvailable.AddDynamic(this, &AYourGameMode::HandleOptionalUpdate);
-    Updater->OnNoUpdateNeeded.AddDynamic(this, &AYourGameMode::HandleNoUpdate);
-    
-    // Check for updates
-    Updater->CheckForUpdates();
+    // Get match data from game instance
+    UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance());
+    if (GI && GI->CurrentMatch.IsValid())
+    {
+        StartMatch(GI->CurrentMatch);
+    }
 }
 
-void AYourGameMode::HandleForcedUpdate(const FUpdateInfo& Info)
+void AGameController::StartMatch(const FMatchLaunchData& Data)
 {
-    // REQUIRED: Show blocking dialog - user MUST update to continue
-    UE_LOG(LogTemp, Warning, TEXT("Required update: %s"), *Info.LatestVersion);
-    ShowForcedUpdateUI(Info.DownloadUrl, Info.ReleaseNotes);
-}
-
-void AYourGameMode::HandleOptionalUpdate(const FUpdateInfo& Info)
-{
-    // Optional: Show update prompt with Update/Skip buttons
-    UE_LOG(LogTemp, Log, TEXT("Update available: %s (%s)"), 
-        *Info.LatestVersion, *Info.FileSizeFormatted);
-    ShowOptionalUpdateUI(Info);
-}
-
-void AYourGameMode::HandleNoUpdate()
-{
-    // App is up to date - continue to game
-    UE_LOG(LogTemp, Log, TEXT("App is up to date"));
-    StartGame();
+    MatchData = Data;
+    StartTime = GetWorld()->GetTimeSeconds();
+    
+    // Use random seed
+    FMath::RandInit(Data.RandomSeed);
+    
+    // Start gameplay
+    BeginGameplay();
 }
 ```
+
+---
+
+## 5. Submit Score
+
+When the match ends, submit the score securely.
+
+### Unity
+
+```csharp
+using Deskillz;
+using Deskillz.Lobby;
+
+public class GameController : MonoBehaviour
+{
+    public void OnGameOver(int finalScore)
+    {
+        float duration = Time.time - startTime;
+        
+        // Submit score and return to main app
+        DeskillzBridge.Instance.SubmitScore(finalScore, result =>
+        {
+            if (result.Success)
+            {
+                Debug.Log("Score submitted!");
+                DeskillzBridge.Instance.ReturnToMainApp("results");
+            }
+            else
+            {
+                Debug.LogError($"Failed: {result.Error}");
+            }
+        });
+    }
+}
+```
+
+### Unreal
+
+```cpp
+void AGameController::OnGameOver(int32 FinalScore)
+{
+    float Duration = GetWorld()->GetTimeSeconds() - StartTime;
+    
+    UDeskillzBridge::Get()->SubmitScore(FinalScore,
+        FOnScoreSubmitted::CreateLambda([](const FScoreSubmitResult& Result) {
+            if (Result.bSuccess)
+            {
+                UE_LOG(LogTemp, Log, TEXT("Score submitted!"));
+                UDeskillzBridge::Get()->ReturnToMainApp(TEXT("results"));
+            }
+        })
+    );
+}
+```
+
+---
+
+## 6. Enable Auto-Updates
+
+Keep players on the latest version with automatic update checks.
 
 ### Unity
 
 ```csharp
 using Deskillz;
 
-void Start()
+public class UpdateChecker : MonoBehaviour
 {
-    // Initialize SDK first (Step 4 code here)
-    // ...
-    
-    // Set current version
-    DeskillzUpdater.Instance.CurrentVersion = Application.version;
-    DeskillzUpdater.Instance.CurrentVersionCode = GetVersionCode();
-    
-    // Option 1: Use built-in UI (simplest)
-    DeskillzUpdaterUI.Instance.ShowOnUpdateAvailable = true;
-    DeskillzUpdaterUI.Instance.BlockOnForcedUpdate = true;
-    
-    // Option 2: Handle events manually
-    DeskillzUpdater.OnForcedUpdateRequired += HandleForcedUpdate;
-    DeskillzUpdater.OnUpdateAvailable += HandleOptionalUpdate;
-    DeskillzUpdater.OnNoUpdateNeeded += () => StartGame();
-    
-    // Check for updates
-    DeskillzUpdater.Instance.CheckForUpdates();
-}
-
-void HandleForcedUpdate(UpdateInfo info)
-{
-    // Show blocking dialog - must update to continue
-    Debug.Log($"Required update: {info.LatestVersion}");
-    DeskillzUpdaterUI.Instance.ShowUpdateDialog(info, blocking: true);
-}
-
-void HandleOptionalUpdate(UpdateInfo info)
-{
-    // Show optional dialog with Update/Skip buttons
-    Debug.Log($"Update available: {info.LatestVersion} ({info.FileSizeFormatted})");
-    DeskillzUpdaterUI.Instance.ShowUpdateDialog(info, blocking: false);
-}
-
-int GetVersionCode()
-{
-    string[] parts = Application.version.Split('.');
-    return int.Parse(parts[0]) * 10000 + 
-           int.Parse(parts[1]) * 100 + 
-           int.Parse(parts[2]);
-}
-```
-
-### Version Code Format
-
-Your version code must increment with each release:
-
-| Version String | Version Code |
-|----------------|--------------|
-| 1.0.0 | 10000 |
-| 1.0.1 | 10001 |
-| 1.1.0 | 10100 |
-| 1.2.0 | 10200 |
-| 2.0.0 | 20000 |
-
-**Formula:** `(major × 10000) + (minor × 100) + patch`
-
-The SDK automatically checks for updates and prompts users when a new version is available. For forced updates (security fixes, critical bugs), the app will block until the user updates.
-
-## Complete Minimal Example
-
-Here's a complete minimal integration:
-
-```cpp
-// MinimalDeskillzGame.h
-#pragma once
-
-#include "CoreMinimal.h"
-#include "Core/DeskillzSDK.h"
-#include "Core/DeskillzUpdater.h"
-#include "Match/DeskillzMatchManager.h"
-#include "Match/DeskillzMatchmaking.h"
-#include "Security/DeskillzSecureSubmitter.h"
-#include "GameFramework/GameModeBase.h"
-#include "MinimalDeskillzGame.generated.h"
-
-UCLASS()
-class AMinimalDeskillzGame : public AGameModeBase
-{
-    GENERATED_BODY()
-    
-public:
-    virtual void BeginPlay() override;
-    
-    UFUNCTION(BlueprintCallable)
-    void EnterTournament(const FString& TournamentId);
-    
-    UFUNCTION(BlueprintCallable)
-    void SubmitGameScore(int64 Score);
-    
-private:
-    UFUNCTION()
-    void OnMatchFound(const FDeskillzMatch& Match);
-    
-    UFUNCTION()
-    void OnScoreSubmitted(bool bSuccess, const FString& Message);
-    
-    UFUNCTION()
-    void OnForcedUpdate(const FUpdateInfo& Info);
-    
-    UFUNCTION()
-    void OnNoUpdate();
-    
-    FString CurrentMatchId;
-    float MatchStartTime;
-};
-
-// MinimalDeskillzGame.cpp
-#include "MinimalDeskillzGame.h"
-
-void AMinimalDeskillzGame::BeginPlay()
-{
-    Super::BeginPlay();
-    
-    // Initialize SDK
-    FDeskillzConfig Config;
-    Config.GameId = TEXT("your_game_id");
-    Config.ApiKey = TEXT("your_api_key");
-    Config.Environment = EDeskillzEnvironment::Sandbox;
-    
-    UDeskillzSDK::Get()->Initialize(Config);
-    
-    // Setup auto-updater (NEW in v2.3)
-    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
-    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
-    Updater->OnForceUpdateRequired.AddDynamic(this, &AMinimalDeskillzGame::OnForcedUpdate);
-    Updater->OnNoUpdateNeeded.AddDynamic(this, &AMinimalDeskillzGame::OnNoUpdate);
-    Updater->CheckForUpdates();
-}
-
-void AMinimalDeskillzGame::OnForcedUpdate(const FUpdateInfo& Info)
-{
-    // Show update required UI - block gameplay
-    // User must update to continue
-}
-
-void AMinimalDeskillzGame::OnNoUpdate()
-{
-    // App is current - show main menu
-}
-
-void AMinimalDeskillzGame::EnterTournament(const FString& TournamentId)
-{
-    UDeskillzMatchmaking* Matchmaking = UDeskillzMatchmaking::Get();
-    Matchmaking->OnMatchFound.AddDynamic(this, &AMinimalDeskillzGame::OnMatchFound);
-    Matchmaking->StartMatchmaking(TournamentId);
-}
-
-void AMinimalDeskillzGame::OnMatchFound(const FDeskillzMatch& Match)
-{
-    CurrentMatchId = Match.MatchId;
-    MatchStartTime = GetWorld()->GetTimeSeconds();
-    
-    UDeskillzMatchManager::Get()->StartMatch(Match.MatchId);
-    
-    // TODO: Start your actual gameplay here
-}
-
-void AMinimalDeskillzGame::SubmitGameScore(int64 Score)
-{
-    float Duration = GetWorld()->GetTimeSeconds() - MatchStartTime;
-    
-    UDeskillzSecureSubmitter* Submitter = UDeskillzSecureSubmitter::Get();
-    Submitter->OnScoreSubmitted.AddDynamic(this, &AMinimalDeskillzGame::OnScoreSubmitted);
-    Submitter->SubmitScore(Score, Duration);
-}
-
-void AMinimalDeskillzGame::OnScoreSubmitted(bool bSuccess, const FString& Message)
-{
-    if (bSuccess)
+    void Start()
     {
-        UDeskillzMatchManager::Get()->EndMatch(EDeskillzMatchResult::Completed);
+        DeskillzUpdater.Instance.OnForcedUpdateRequired += HandleForcedUpdate;
+        DeskillzUpdater.Instance.OnUpdateAvailable += HandleOptionalUpdate;
+        
+        // Check on startup
+        DeskillzUpdater.Instance.CheckForUpdates();
+    }
+    
+    void HandleForcedUpdate(UpdateInfo info)
+    {
+        // Must update - block gameplay
+        ShowBlockingUpdateDialog(info);
+    }
+    
+    void HandleOptionalUpdate(UpdateInfo info)
+    {
+        // Optional - show dismissable dialog
+        ShowOptionalUpdateDialog(info);
+    }
+    
+    public void OpenUpdateLink()
+    {
+        DeskillzUpdater.Instance.OpenUpdateUrl();
     }
 }
 ```
 
-## Next Steps
-
-Now that you have basic integration working:
-
-1. **Add UI** - Implement tournament browser, wallet display
-2. **Add Analytics** - Track player events for insights
-3. **Configure Anti-Cheat** - Protect your game from cheaters
-4. **Upload Your Build** - Submit APK to Developer Portal for review
-5. **Test Thoroughly** - Use sandbox for comprehensive testing
-6. **Go Live** - Switch to Production and launch!
-
-## Resources
-
-- [Full API Reference](API_REFERENCE.md)
-- [Integration Guide](INTEGRATION_GUIDE.md)
-- [Sample Project](https://github.com/deskillz/unreal-sample)
-- [Developer Portal](https://developer.deskillz.games)
-
-## Troubleshooting
-
-### SDK Not Initializing
+### Unreal
 
 ```cpp
-// Check initialization status
-if (!UDeskillzSDK::Get()->IsInitialized())
+void AUpdateChecker::BeginPlay()
 {
-    // Verify credentials
-    // Check network connectivity
-    // Enable logging for details
+    Super::BeginPlay();
+    
+    UDeskillzUpdater::Get()->OnForcedUpdateRequired.AddDynamic(this, &AUpdateChecker::HandleForcedUpdate);
+    UDeskillzUpdater::Get()->OnUpdateAvailable.AddDynamic(this, &AUpdateChecker::HandleOptionalUpdate);
+    
+    UDeskillzUpdater::Get()->CheckForUpdates();
 }
-```
 
-### Module Not Found
+void AUpdateChecker::HandleForcedUpdate(const FUpdateInfo& Info)
+{
+    ShowBlockingUpdateDialog(Info);
+}
 
-Ensure `"Deskillz"` is in your `Build.cs` PublicDependencyModuleNames.
-
-### Blueprint Nodes Missing
-
-Restart the editor after enabling the plugin.
-
-### Update Check Failing
-
-```cpp
-// Enable test mode to simulate updates
-UDeskillzUpdater::Get()->SetTestMode(true);
-UDeskillzUpdater::Get()->SetTestUpdateAvailable(true);
-UDeskillzUpdater::Get()->SetTestForceUpdate(false);
-UDeskillzUpdater::Get()->CheckForUpdates();
+void AUpdateChecker::HandleOptionalUpdate(const FUpdateInfo& Info)
+{
+    ShowOptionalUpdateDialog(Info);
+}
 ```
 
 ---
 
-Need help? Contact sdk-support@deskillz.games
+## 7. Host Registration Quick Start
+
+Allow players to become hosts and earn revenue from rooms they create.
+
+### Unity
+
+```csharp
+using Deskillz.Host;
+
+public class HostQuickStart : MonoBehaviour
+{
+    void Start()
+    {
+        // Initialize host manager
+        HostManager.Instance.Initialize(currentUserId);
+        
+        // Subscribe to key events
+        HostManager.Instance.OnTierChanged += (old, newTier) => 
+            Debug.Log($"Tier upgraded to {newTier}!");
+        HostManager.Instance.OnEarningsUpdated += (total, pending) =>
+            Debug.Log($"Earnings: ${total} (${pending} pending)");
+    }
+    
+    public void BecomeHost()
+    {
+        // Register as host
+        HostManager.Instance.RegisterAsHost(
+            profile => {
+                Debug.Log($"Now a {profile.TierName} host!");
+                Debug.Log($"Revenue share: {GetRevenueShare(profile.Tier)}%");
+            },
+            error => Debug.LogError(error)
+        );
+    }
+    
+    public void CreateHostRoom()
+    {
+        var config = new CreateHostRoomConfig
+        {
+            Name = "My First Room",
+            GameCategory = GameCategory.Social,
+            PointValue = 0.01m,        // $0.01 per point
+            MinBuyIn = 10.0m,
+            MaxBuyIn = 100.0m,
+            DefaultBuyIn = 20.0m,
+            RakePercentage = 5.0m,     // 5% rake
+            RakeCap = 2.0m,            // Max $2 per pot
+            EntryCurrency = "USDT",
+            MaxPlayers = 6,
+            Mode = RoomMode.Sync,
+            AllowSpectators = true
+        };
+        
+        HostManager.Instance.CreateHostRoom(config,
+            room => Debug.Log($"Room created! Code: {room.RoomCode}"),
+            error => Debug.LogError(error)
+        );
+    }
+    
+    public void CheckEarnings()
+    {
+        float total = HostManager.Instance.GetTotalEarnings();
+        float pending = HostManager.Instance.GetPendingEarnings();
+        Debug.Log($"Total: ${total}, Available to withdraw: ${pending}");
+    }
+    
+    public void Withdraw()
+    {
+        float pending = HostManager.Instance.GetPendingEarnings();
+        HostManager.Instance.WithdrawEarnings(pending,
+            () => Debug.Log("Withdrawal initiated!"),
+            error => Debug.LogError(error)
+        );
+    }
+    
+    string GetRevenueShare(HostTier tier)
+    {
+        return tier switch
+        {
+            HostTier.Starter => "50",
+            HostTier.Bronze => "55",
+            HostTier.Silver => "60",
+            HostTier.Gold => "65",
+            HostTier.Platinum => "70",
+            HostTier.Diamond => "75",
+            _ => "50"
+        };
+    }
+}
+```
+
+### Unreal
+
+```cpp
+#include "Host/DeskillzHostManager.h"
+
+void AHostQuickStart::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    UDeskillzHostManager::Get()->Initialize(CurrentUserId);
+    
+    UDeskillzHostManager::Get()->OnTierChanged.AddDynamic(this, &AHostQuickStart::HandleTierChange);
+    UDeskillzHostManager::Get()->OnEarningsUpdated.AddDynamic(this, &AHostQuickStart::HandleEarnings);
+}
+
+void AHostQuickStart::BecomeHost()
+{
+    UDeskillzHostManager::Get()->RegisterAsHost(
+        FOnHostProfileResult::CreateLambda([](const FHostProfile& Profile) {
+            UE_LOG(LogTemp, Log, TEXT("Now a %s host!"), *Profile.TierName);
+        }),
+        FOnHostError::CreateLambda([](const FString& Error) {
+            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
+        })
+    );
+}
+
+void AHostQuickStart::CreateHostRoom()
+{
+    FCreateHostRoomConfig Config;
+    Config.Name = TEXT("My First Room");
+    Config.GameCategory = EGameCategory::Social;
+    Config.PointValue = 0.01f;
+    Config.MinBuyIn = 10.0f;
+    Config.MaxBuyIn = 100.0f;
+    Config.DefaultBuyIn = 20.0f;
+    Config.RakePercentage = 5.0f;
+    Config.RakeCap = 2.0f;
+    Config.EntryCurrency = TEXT("USDT");
+    Config.MaxPlayers = 6;
+    Config.Mode = ERoomMode::Sync;
+    Config.bAllowSpectators = true;
+    
+    UDeskillzHostManager::Get()->CreateHostRoom(Config,
+        FOnRoomCreated::CreateLambda([](const FPrivateRoom& Room) {
+            UE_LOG(LogTemp, Log, TEXT("Room created! Code: %s"), *Room.RoomCode);
+        }),
+        FOnHostError::CreateLambda([](const FString& Error) {
+            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
+        })
+    );
+}
+```
+
+---
+
+## 8. Social Game Quick Start
+
+Implement rake-based social games with buy-in, rebuy, and cash-out flows.
+
+### Unity
+
+```csharp
+using Deskillz.Social;
+
+public class SocialGameQuickStart : MonoBehaviour
+{
+    void Start()
+    {
+        // Initialize managers for this room
+        SocialGameManager.Instance.Initialize(roomId);
+        BuyInManager.Instance.Initialize(roomId);
+        
+        // Subscribe to events
+        SocialGameManager.Instance.OnRoundEnded += HandleRoundEnd;
+        BuyInManager.Instance.OnRebuyRequired += HandleRebuyRequired;
+        BuyInManager.Instance.OnLowBalanceWarning += HandleLowBalance;
+    }
+    
+    public void StartSession()
+    {
+        SocialGameManager.Instance.StartSession(
+            session => Debug.Log($"Session started: {session.Id}"),
+            error => Debug.LogError(error)
+        );
+    }
+    
+    public void PlayerBuyIn(string playerId, float amount)
+    {
+        BuyInManager.Instance.ProcessBuyIn(playerId, amount,
+            result => Debug.Log($"{playerId} bought in for ${amount}"),
+            error => Debug.LogError(error)
+        );
+    }
+    
+    public void EndRound(string winnerId, float potAmount)
+    {
+        // End round - rake is automatically calculated
+        SocialGameManager.Instance.EndRound(winnerId, potAmount);
+    }
+    
+    void HandleRoundEnd(RoundResult result)
+    {
+        Debug.Log($"Round {result.RoundNumber} complete");
+        Debug.Log($"Winner: {result.WinnerId}");
+        Debug.Log($"Pot: ${result.PotAmount}");
+        Debug.Log($"Rake: ${result.RakeAmount}");
+        
+        // Start next round
+        SocialGameManager.Instance.StartRound();
+    }
+    
+    void HandleRebuyRequired(string playerId, float timeout)
+    {
+        Debug.Log($"{playerId} is out! {timeout}s to rebuy");
+        // Show rebuy UI
+    }
+    
+    void HandleLowBalance(string playerId, float balance, float threshold)
+    {
+        Debug.Log($"Warning: {playerId} balance (${balance}) below ${threshold}");
+    }
+    
+    public void PlayerCashOut(string playerId)
+    {
+        BuyInManager.Instance.ProcessCashOut(playerId,
+            result => Debug.Log($"{playerId} cashed out ${result.Amount}"),
+            error => Debug.LogError(error)
+        );
+    }
+    
+    public void PreviewRake(float potAmount)
+    {
+        // Show players what rake will be taken
+        float rake = RakeCalculator.CalculateRakeWithCap(potAmount, 5.0f, 3.0f);
+        Debug.Log($"Pot: ${potAmount} -> Rake: ${rake} -> Winner gets: ${potAmount - rake}");
+    }
+}
+```
+
+### Unreal
+
+```cpp
+#include "Social/DeskillzSocialGameManager.h"
+#include "Social/DeskillzBuyInManager.h"
+#include "Social/DeskillzRakeCalculator.h"
+
+void ASocialGameQuickStart::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    UDeskillzSocialGameManager::Get()->Initialize(RoomId);
+    UDeskillzBuyInManager::Get()->Initialize(RoomId);
+    
+    UDeskillzSocialGameManager::Get()->OnRoundEnded.AddDynamic(this, &ASocialGameQuickStart::HandleRoundEnd);
+    UDeskillzBuyInManager::Get()->OnRebuyRequired.AddDynamic(this, &ASocialGameQuickStart::HandleRebuyRequired);
+}
+
+void ASocialGameQuickStart::StartSession()
+{
+    UDeskillzSocialGameManager::Get()->StartSession(
+        FOnSessionStarted::CreateLambda([](const FSocialGameSession& Session) {
+            UE_LOG(LogTemp, Log, TEXT("Session started: %s"), *Session.Id);
+        }),
+        FOnSocialError::CreateLambda([](const FString& Error) {
+            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
+        })
+    );
+}
+
+void ASocialGameQuickStart::PlayerBuyIn(const FString& PlayerId, float Amount)
+{
+    UDeskillzBuyInManager::Get()->ProcessBuyIn(PlayerId, Amount,
+        FOnBuyInResult::CreateLambda([PlayerId, Amount](const FBuyInResult& Result) {
+            UE_LOG(LogTemp, Log, TEXT("%s bought in for $%.2f"), *PlayerId, Amount);
+        }),
+        FOnBuyInError::CreateLambda([](const FString& Error) {
+            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
+        })
+    );
+}
+
+void ASocialGameQuickStart::EndRound(const FString& WinnerId, float PotAmount)
+{
+    UDeskillzSocialGameManager::Get()->EndRound(WinnerId, PotAmount);
+}
+
+void ASocialGameQuickStart::HandleRoundEnd(const FRoundResult& Result)
+{
+    UE_LOG(LogTemp, Log, TEXT("Round %d - Winner: %s, Pot: $%.2f, Rake: $%.2f"),
+        Result.RoundNumber, *Result.WinnerId, Result.PotAmount, Result.RakeAmount);
+    
+    // Start next round
+    UDeskillzSocialGameManager::Get()->StartRound();
+}
+```
+
+---
+
+## 9. Spectator Mode Quick Start
+
+Let players watch live games.
+
+### Unity
+
+```csharp
+using Deskillz.Spectator;
+
+public class SpectatorQuickStart : MonoBehaviour
+{
+    void Start()
+    {
+        SpectatorManager.Instance.Initialize();
+        
+        // Subscribe to events
+        SpectatorManager.Instance.OnGameStateUpdated += HandleStateUpdate;
+        SpectatorManager.Instance.OnPlayerAction += HandleAction;
+    }
+    
+    public void BrowseRooms()
+    {
+        var filter = new SpectatorRoomFilter
+        {
+            GameId = currentGameId,
+            MinPlayers = 2,
+            IsActive = true
+        };
+        
+        SpectatorManager.Instance.FetchSpectatorRooms(filter,
+            rooms => {
+                foreach (var room in rooms)
+                {
+                    Debug.Log($"{room.RoomName}: {room.PlayerCount} players, {room.SpectatorCount} watching");
+                }
+            },
+            error => Debug.LogError(error)
+        );
+    }
+    
+    public void WatchRoom(string roomId)
+    {
+        SpectatorManager.Instance.JoinAsSpectator(roomId,
+            state => {
+                Debug.Log($"Now watching: {state.RoomName}");
+                Debug.Log($"Round: {state.CurrentRound}");
+                Debug.Log($"Players: {state.Players.Count}");
+            },
+            error => Debug.LogError(error)
+        );
+    }
+    
+    void HandleStateUpdate(SpectatorState state)
+    {
+        // Update your game visualization
+        Debug.Log($"Pot: ${state.TotalPot}");
+    }
+    
+    void HandleAction(SpectatorAction action)
+    {
+        Debug.Log($"{action.PlayerUsername}: {action.ActionType}");
+    }
+    
+    public void StopWatching()
+    {
+        SpectatorManager.Instance.LeaveSpectator();
+    }
+}
+```
+
+### Unreal
+
+```cpp
+#include "Spectator/DeskillzSpectatorManager.h"
+
+void ASpectatorQuickStart::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    UDeskillzSpectatorManager::Get()->Initialize();
+    
+    UDeskillzSpectatorManager::Get()->OnGameStateUpdated.AddDynamic(this, &ASpectatorQuickStart::HandleStateUpdate);
+    UDeskillzSpectatorManager::Get()->OnPlayerAction.AddDynamic(this, &ASpectatorQuickStart::HandleAction);
+}
+
+void ASpectatorQuickStart::BrowseRooms()
+{
+    FSpectatorRoomFilter Filter;
+    Filter.GameId = CurrentGameId;
+    Filter.MinPlayers = 2;
+    Filter.bIsActive = true;
+    
+    UDeskillzSpectatorManager::Get()->FetchSpectatorRooms(Filter,
+        FOnSpectatorRoomsResult::CreateLambda([](const TArray<FSpectatorRoom>& Rooms) {
+            for (const auto& Room : Rooms)
+            {
+                UE_LOG(LogTemp, Log, TEXT("%s: %d players, %d watching"),
+                    *Room.RoomName, Room.PlayerCount, Room.SpectatorCount);
+            }
+        }),
+        FOnSpectatorError::CreateLambda([](const FString& Error) {
+            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
+        })
+    );
+}
+
+void ASpectatorQuickStart::WatchRoom(const FString& RoomId)
+{
+    UDeskillzSpectatorManager::Get()->JoinAsSpectator(RoomId,
+        FOnJoinedSpectator::CreateLambda([](const FSpectatorState& State) {
+            UE_LOG(LogTemp, Log, TEXT("Now watching: %s"), *State.RoomName);
+        }),
+        FOnSpectatorError::CreateLambda([](const FString& Error) {
+            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
+        })
+    );
+}
+
+void ASpectatorQuickStart::HandleStateUpdate(const FSpectatorState& State)
+{
+    UE_LOG(LogTemp, Log, TEXT("Pot: $%.2f"), State.TotalPot);
+}
+
+void ASpectatorQuickStart::HandleAction(const FSpectatorAction& Action)
+{
+    UE_LOG(LogTemp, Log, TEXT("%s: %s"), *Action.PlayerUsername, *Action.ActionType);
+}
+```
+
+---
+
+## 10. Test Your Integration
+
+### Test Mode
+
+Test without real currency in the Unity Editor or with test flags:
+
+```csharp
+// Unity - Test deep link launch
+DeepLinkHandler.SimulateDeepLink("deskillz://launch?matchId=test123&token=testtoken");
+
+// Test room UI
+PrivateRoomUI.Instance.ShowRoomList();
+
+// Test host system
+HostManager.Instance.Initialize("test-user");
+HostDashboardUI.Instance.Show();
+
+// Test social games
+SocialGameManager.Instance.StartTestSession();
+BuyInModal.Instance.Show(10f, 200f);
+
+// Test spectator mode
+SpectatorManager.Instance.FetchSpectatorRooms(new SpectatorRoomFilter());
+SpectatorView.Instance.Show();
+
+// Test auto-updater
+DeskillzUpdater.Instance.CheckForUpdates();
+```
+
+### Sandbox vs Production
+
+| Environment | Use For | API Base |
+|-------------|---------|----------|
+| Sandbox | Development & Testing | sandbox.api.deskillz.games |
+| Production | Live Release | api.deskillz.games |
+
+```csharp
+// Development
+config.Environment = DeskillzEnvironment.Sandbox;
+
+// Release
+config.Environment = DeskillzEnvironment.Production;
+```
+
+### Pre-Launch Checklist
+
+- [ ] SDK initializes without errors
+- [ ] Deep link match launch works
+- [ ] Score submission succeeds
+- [ ] Auto-updater checks work
+- [ ] Private room creation/joining works
+- [ ] Host registration works (if applicable)
+- [ ] Social game buy-in/cashout works (if applicable)
+- [ ] Spectator mode works (if applicable)
+- [ ] Test in both Sandbox and Production
+- [ ] No test/debug code in release build
+
+---
+
+## What's Next?
+
+- [API Reference](API_REFERENCE.md) - Complete method documentation
+- [Integration Guide](INTEGRATION_GUIDE.md) - Detailed integration guide
+- [Unity SDK Repository](https://github.com/Deskillz-Games-Development/unity-sdk)
+- [Unreal SDK Repository](https://github.com/Deskillz-Games-Development/unreal-sdk)
+- [Developer Portal](https://developer.deskillz.games) - Manage your games
+- [Documentation](https://docs.deskillz.games) - Full documentation
+- [Support](https://support.deskillz.games) - Get help
+
+---
+
+## Version History
+
+| Version | Changes |
+|---------|---------|
+| 2.6.0 | Added Host, Social Game, and Spectator quick starts |
+| 2.5.0 | Added Auto-Updater section |
+| 2.2.0 | Added Private Rooms |
+| 2.0.0 | Deep Link architecture |
