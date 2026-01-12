@@ -12,7 +12,7 @@
 6. [Enable Auto-Updates](#6-enable-auto-updates)
 7. [Host Registration Quick Start](#7-host-registration-quick-start) - NEW
 8. [Social Game Quick Start](#8-social-game-quick-start) - NEW
-9. [Spectator Mode Quick Start](#9-spectator-mode-quick-start) - NEW
+9. [Host Spectator Mode Quick Start](#9-host-spectator-mode-quick-start) - NEW
 10. [Test Your Integration](#10-test-your-integration)
 
 ---
@@ -667,72 +667,83 @@ void ASocialGameQuickStart::HandleRoundEnd(const FRoundResult& Result)
 
 ---
 
-## 9. Spectator Mode Quick Start
+## 9. Host Spectator Mode Quick Start
 
-Let players watch live games.
+Let hosts monitor their private social rooms (host-only feature).
+
+> **Note:** Only hosts can spectate their own rooms. General public spectating is not available.
+> Hosts can see board/scores but NOT player hands (anti-cheat).
 
 ### Unity
 
 ```csharp
-using Deskillz.Spectator;
+using Deskillz.Host;
 
-public class SpectatorQuickStart : MonoBehaviour
+public class HostSpectatorQuickStart : MonoBehaviour
 {
     void Start()
     {
-        SpectatorManager.Instance.Initialize();
+        // Host must be authenticated first
+        HostSpectatorManager.Instance.Initialize();
         
-        // Subscribe to events
-        SpectatorManager.Instance.OnGameStateUpdated += HandleStateUpdate;
-        SpectatorManager.Instance.OnPlayerAction += HandleAction;
+        // Subscribe to events for YOUR rooms
+        HostSpectatorManager.Instance.OnGameStateUpdated += HandleStateUpdate;
+        HostSpectatorManager.Instance.OnRoundEnded += HandleRoundEnd;
     }
     
-    public void BrowseRooms()
+    public void FetchMyRooms()
     {
-        var filter = new SpectatorRoomFilter
+        var filter = new HostRoomFilter
         {
-            GameId = currentGameId,
-            MinPlayers = 2,
+            GameCategory = GameCategory.Social, // Social rooms only
+            Status = RoomStatus.Active,
             IsActive = true
         };
         
-        SpectatorManager.Instance.FetchSpectatorRooms(filter,
+        HostSpectatorManager.Instance.FetchHostRooms(filter,
             rooms => {
                 foreach (var room in rooms)
                 {
-                    Debug.Log($"{room.RoomName}: {room.PlayerCount} players, {room.SpectatorCount} watching");
+                    Debug.Log($"{room.RoomName}: {room.PlayerCount} players");
                 }
             },
             error => Debug.LogError(error)
         );
     }
     
-    public void WatchRoom(string roomId)
+    public void SpectateMyRoom(string roomId)
     {
-        SpectatorManager.Instance.JoinAsSpectator(roomId,
+        // Join YOUR room as spectator (see board, NOT hands)
+        HostSpectatorManager.Instance.SpectateRoom(roomId,
             state => {
-                Debug.Log($"Now watching: {state.RoomName}");
+                Debug.Log($"Watching your room: {state.RoomName}");
                 Debug.Log($"Round: {state.CurrentRound}");
-                Debug.Log($"Players: {state.Players.Count}");
+                // Note: Player hands NOT visible (anti-cheat)
             },
             error => Debug.LogError(error)
         );
     }
     
-    void HandleStateUpdate(SpectatorState state)
+    void HandleStateUpdate(HostSpectatorState state)
     {
-        // Update your game visualization
-        Debug.Log($"Pot: ${state.TotalPot}");
+        // Update board (NO hands visible)
+        Debug.Log($"Scores updated");
     }
     
-    void HandleAction(SpectatorAction action)
+    void HandleRoundEnd(HostRoundResult result)
     {
-        Debug.Log($"{action.PlayerUsername}: {action.ActionType}");
+        Debug.Log($"Round {result.RoundNumber} winner: {result.WinnerUsername}");
     }
     
-    public void StopWatching()
+    public void SwitchRoom(string otherRoomId)
     {
-        SpectatorManager.Instance.LeaveSpectator();
+        // Switch between YOUR rooms (multi-room hosting)
+        HostSpectatorManager.Instance.SwitchRoom(otherRoomId);
+    }
+    
+    public void StopSpectating()
+    {
+        HostSpectatorManager.Instance.StopSpectating();
     }
 }
 ```
@@ -740,59 +751,63 @@ public class SpectatorQuickStart : MonoBehaviour
 ### Unreal
 
 ```cpp
-#include "Spectator/DeskillzSpectatorManager.h"
+#include "Host/DeskillzHostSpectatorManager.h"
 
-void ASpectatorQuickStart::BeginPlay()
+void AHostSpectatorQuickStart::BeginPlay()
 {
     Super::BeginPlay();
     
-    UDeskillzSpectatorManager::Get()->Initialize();
+    // Host must be authenticated first
+    UDeskillzHostSpectatorManager::Get()->Initialize();
     
-    UDeskillzSpectatorManager::Get()->OnGameStateUpdated.AddDynamic(this, &ASpectatorQuickStart::HandleStateUpdate);
-    UDeskillzSpectatorManager::Get()->OnPlayerAction.AddDynamic(this, &ASpectatorQuickStart::HandleAction);
+    UDeskillzHostSpectatorManager::Get()->OnGameStateUpdated.AddDynamic(
+        this, &AHostSpectatorQuickStart::HandleStateUpdate);
+    UDeskillzHostSpectatorManager::Get()->OnRoundEnded.AddDynamic(
+        this, &AHostSpectatorQuickStart::HandleRoundEnd);
 }
 
-void ASpectatorQuickStart::BrowseRooms()
+void AHostSpectatorQuickStart::FetchMyRooms()
 {
-    FSpectatorRoomFilter Filter;
-    Filter.GameId = CurrentGameId;
-    Filter.MinPlayers = 2;
+    FHostRoomFilter Filter;
+    Filter.GameCategory = EGameCategory::Social; // Social only
     Filter.bIsActive = true;
     
-    UDeskillzSpectatorManager::Get()->FetchSpectatorRooms(Filter,
-        FOnSpectatorRoomsResult::CreateLambda([](const TArray<FSpectatorRoom>& Rooms) {
+    UDeskillzHostSpectatorManager::Get()->FetchHostRooms(Filter,
+        FOnHostRoomsResult::CreateLambda([](const TArray<FHostRoom>& Rooms) {
             for (const auto& Room : Rooms)
             {
-                UE_LOG(LogTemp, Log, TEXT("%s: %d players, %d watching"),
-                    *Room.RoomName, Room.PlayerCount, Room.SpectatorCount);
+                UE_LOG(LogTemp, Log, TEXT("%s: %d players"),
+                    *Room.RoomName, Room.PlayerCount);
             }
         }),
-        FOnSpectatorError::CreateLambda([](const FString& Error) {
+        FOnHostError::CreateLambda([](const FString& Error) {
             UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
         })
     );
 }
 
-void ASpectatorQuickStart::WatchRoom(const FString& RoomId)
+void AHostSpectatorQuickStart::SpectateMyRoom(const FString& RoomId)
 {
-    UDeskillzSpectatorManager::Get()->JoinAsSpectator(RoomId,
-        FOnJoinedSpectator::CreateLambda([](const FSpectatorState& State) {
-            UE_LOG(LogTemp, Log, TEXT("Now watching: %s"), *State.RoomName);
+    // Join YOUR room (see board, NOT hands)
+    UDeskillzHostSpectatorManager::Get()->SpectateRoom(RoomId,
+        FOnJoinedSpectator::CreateLambda([](const FHostSpectatorState& State) {
+            UE_LOG(LogTemp, Log, TEXT("Watching your room: %s"), *State.RoomName);
         }),
-        FOnSpectatorError::CreateLambda([](const FString& Error) {
+        FOnHostError::CreateLambda([](const FString& Error) {
             UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
         })
     );
 }
 
-void ASpectatorQuickStart::HandleStateUpdate(const FSpectatorState& State)
+void AHostSpectatorQuickStart::HandleStateUpdate(const FHostSpectatorState& State)
 {
-    UE_LOG(LogTemp, Log, TEXT("Pot: $%.2f"), State.TotalPot);
+    // Board update (NO hands visible)
+    UE_LOG(LogTemp, Log, TEXT("Scores updated"));
 }
 
-void ASpectatorQuickStart::HandleAction(const FSpectatorAction& Action)
+void AHostSpectatorQuickStart::HandleRoundEnd(const FHostRoundResult& Result)
 {
-    UE_LOG(LogTemp, Log, TEXT("%s: %s"), *Action.PlayerUsername, *Action.ActionType);
+    UE_LOG(LogTemp, Log, TEXT("Round %d winner: %s"), Result.RoundNumber, *Result.WinnerUsername);
 }
 ```
 
@@ -819,9 +834,9 @@ HostDashboardUI.Instance.Show();
 SocialGameManager.Instance.StartTestSession();
 BuyInModal.Instance.Show(10f, 200f);
 
-// Test spectator mode
-SpectatorManager.Instance.FetchSpectatorRooms(new SpectatorRoomFilter());
-SpectatorView.Instance.Show();
+// Test host spectator mode (host-only)
+HostSpectatorManager.Instance.FetchHostRooms(new HostRoomFilter());
+HostSpectatorView.Instance.Show();
 
 // Test auto-updater
 DeskillzUpdater.Instance.CheckForUpdates();

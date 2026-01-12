@@ -1,0 +1,346 @@
+// =============================================================================
+// Deskillz SDK for Unreal Engine - Host Room Switcher Widget Implementation
+// Copyright (c) 2024 Deskillz.Games. All rights reserved.
+// =============================================================================
+// HOST-ONLY FEATURE: Room switcher for hosts monitoring multiple rooms.
+// Allows hosts to switch between their active private social rooms.
+// =============================================================================
+
+#include "UI/Widgets/Spectator/DeskillzHostRoomSwitcherWidget.h"
+#include "Components/TextBlock.h"
+#include "Components/Button.h"
+#include "Components/Border.h"
+#include "Components/HorizontalBox.h"
+#include "Components/ScrollBox.h"
+
+UDeskillzHostRoomSwitcherWidget::UDeskillzHostRoomSwitcherWidget(const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer)
+{
+}
+
+void UDeskillzHostRoomSwitcherWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+
+    // Set host label
+    if (HostLabelText)
+    {
+        HostLabelText->SetText(FText::FromString(TEXT("YOUR ROOMS:")));
+    }
+
+    // Bind add button
+    if (AddRoomButton)
+    {
+        AddRoomButton->OnClicked.AddDynamic(this, &UDeskillzHostRoomSwitcherWidget::OnAddButtonClicked);
+    }
+
+    // Initialize displays
+    UpdateRoomCountDisplay();
+    UpdateAddButtonState();
+}
+
+// ============================================================================
+// Room Management
+// ============================================================================
+
+void UDeskillzHostRoomSwitcherWidget::AddRoom(const FDeskillzHostRoom& Room)
+{
+    // Check if at max
+    if (WatchedRooms.Num() >= MaxRooms)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[HostRoomSwitcher] Cannot add room - at maximum (%d)"), MaxRooms);
+        return;
+    }
+
+    // Check if already exists
+    for (const FDeskillzHostRoom& Existing : WatchedRooms)
+    {
+        if (Existing.Id == Room.Id)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[HostRoomSwitcher] Room already in list: %s"), *Room.Id);
+            return;
+        }
+    }
+
+    // Add room
+    WatchedRooms.Add(Room);
+
+    // Create tab widget
+    UUserWidget* TabWidget = CreateRoomTab(Room);
+    if (TabWidget && TabsContainer)
+    {
+        TabsContainer->AddChild(TabWidget);
+        TabWidgets.Add(Room.Id, TabWidget);
+    }
+
+    // Set as active if first room
+    if (WatchedRooms.Num() == 1)
+    {
+        SetActiveRoom(Room.Id);
+    }
+
+    UpdateRoomCountDisplay();
+    UpdateAddButtonState();
+
+    UE_LOG(LogTemp, Log, TEXT("[HostRoomSwitcher] Added room: %s (%s)"), *Room.Name, *Room.RoomCode);
+}
+
+void UDeskillzHostRoomSwitcherWidget::RemoveRoom(const FString& RoomId)
+{
+    int32 Index = FindRoomIndex(RoomId);
+    if (Index == INDEX_NONE)
+    {
+        return;
+    }
+
+    // Remove from array
+    WatchedRooms.RemoveAt(Index);
+
+    // Remove widget
+    if (UUserWidget** TabWidgetPtr = TabWidgets.Find(RoomId))
+    {
+        if (*TabWidgetPtr)
+        {
+            (*TabWidgetPtr)->RemoveFromParent();
+        }
+        TabWidgets.Remove(RoomId);
+    }
+
+    // Update active room if needed
+    if (ActiveRoomId == RoomId)
+    {
+        if (WatchedRooms.Num() > 0)
+        {
+            SetActiveRoom(WatchedRooms[0].Id);
+        }
+        else
+        {
+            ActiveRoomId.Empty();
+        }
+    }
+
+    UpdateRoomCountDisplay();
+    UpdateAddButtonState();
+
+    UE_LOG(LogTemp, Log, TEXT("[HostRoomSwitcher] Removed room: %s"), *RoomId);
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdateRoom(const FDeskillzHostRoom& Room)
+{
+    int32 Index = FindRoomIndex(Room.Id);
+    if (Index == INDEX_NONE)
+    {
+        return;
+    }
+
+    // Update stored data
+    WatchedRooms[Index] = Room;
+
+    // Update tab widget
+    if (UUserWidget** TabWidgetPtr = TabWidgets.Find(Room.Id))
+    {
+        UpdateRoomTab(*TabWidgetPtr, Room);
+    }
+}
+
+void UDeskillzHostRoomSwitcherWidget::SetActiveRoom(const FString& RoomId)
+{
+    if (ActiveRoomId == RoomId)
+    {
+        return;
+    }
+
+    // Verify room exists
+    int32 Index = FindRoomIndex(RoomId);
+    if (Index == INDEX_NONE)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[HostRoomSwitcher] Cannot set active - room not found: %s"), *RoomId);
+        return;
+    }
+
+    ActiveRoomId = RoomId;
+    UpdateTabActiveStates();
+    ScrollToActiveTab();
+
+    UE_LOG(LogTemp, Log, TEXT("[HostRoomSwitcher] Active room: %s"), *RoomId);
+}
+
+void UDeskillzHostRoomSwitcherWidget::ClearRooms()
+{
+    // Remove all tab widgets
+    for (auto& Pair : TabWidgets)
+    {
+        if (Pair.Value)
+        {
+            Pair.Value->RemoveFromParent();
+        }
+    }
+    TabWidgets.Empty();
+
+    // Clear data
+    WatchedRooms.Empty();
+    ActiveRoomId.Empty();
+
+    UpdateRoomCountDisplay();
+    UpdateAddButtonState();
+
+    UE_LOG(LogTemp, Log, TEXT("[HostRoomSwitcher] Cleared all rooms"));
+}
+
+// ============================================================================
+// Status Updates
+// ============================================================================
+
+void UDeskillzHostRoomSwitcherWidget::SetRoomPaused(const FString& RoomId, bool bPaused)
+{
+    int32 Index = FindRoomIndex(RoomId);
+    if (Index == INDEX_NONE)
+    {
+        return;
+    }
+
+    // Update stored data
+    WatchedRooms[Index].bIsActive = !bPaused;
+
+    // Update tab widget
+    if (UUserWidget** TabWidgetPtr = TabWidgets.Find(RoomId))
+    {
+        UpdateRoomTab(*TabWidgetPtr, WatchedRooms[Index]);
+    }
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdatePlayerCount(const FString& RoomId, int32 Count)
+{
+    int32 Index = FindRoomIndex(RoomId);
+    if (Index == INDEX_NONE)
+    {
+        return;
+    }
+
+    WatchedRooms[Index].CurrentPlayers = Count;
+
+    if (UUserWidget** TabWidgetPtr = TabWidgets.Find(RoomId))
+    {
+        UpdateRoomTab(*TabWidgetPtr, WatchedRooms[Index]);
+    }
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdateRoomRound(const FString& RoomId, int32 RoundNumber)
+{
+    int32 Index = FindRoomIndex(RoomId);
+    if (Index == INDEX_NONE)
+    {
+        return;
+    }
+
+    WatchedRooms[Index].CurrentRound = RoundNumber;
+
+    if (UUserWidget** TabWidgetPtr = TabWidgets.Find(RoomId))
+    {
+        UpdateRoomTab(*TabWidgetPtr, WatchedRooms[Index]);
+    }
+}
+
+// ============================================================================
+// Internal Methods
+// ============================================================================
+
+UUserWidget* UDeskillzHostRoomSwitcherWidget::CreateRoomTab(const FDeskillzHostRoom& Room)
+{
+    // In a full implementation, this would create a proper tab widget
+    // For now, we log the creation
+    UE_LOG(LogTemp, Log, TEXT("[HostRoomSwitcher] Creating tab for: %s (%d/%d players)"),
+        *Room.Name, Room.CurrentPlayers, Room.MaxPlayers);
+
+    // Would create widget from RoomTabWidgetClass or default
+    return nullptr;
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdateRoomTab(UUserWidget* TabWidget, const FDeskillzHostRoom& Room)
+{
+    if (!TabWidget)
+    {
+        return;
+    }
+
+    // Update tab display
+    // Would update room name, player count, status, etc.
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdateTabActiveStates()
+{
+    for (auto& Pair : TabWidgets)
+    {
+        if (Pair.Value)
+        {
+            bool bIsActive = (Pair.Key == ActiveRoomId);
+            // Update tab visual state (highlight active tab)
+        }
+    }
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdateRoomCountDisplay()
+{
+    if (RoomCountText && bShowRoomCount)
+    {
+        RoomCountText->SetText(FText::FromString(
+            FString::Printf(TEXT("%d/%d"), WatchedRooms.Num(), MaxRooms)
+        ));
+    }
+}
+
+void UDeskillzHostRoomSwitcherWidget::UpdateAddButtonState()
+{
+    if (AddRoomButton)
+    {
+        bool bCanAdd = CanAddRoom();
+        AddRoomButton->SetIsEnabled(bCanAdd);
+        AddRoomButton->SetVisibility(bShowAddButton ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+    }
+}
+
+int32 UDeskillzHostRoomSwitcherWidget::FindRoomIndex(const FString& RoomId) const
+{
+    for (int32 i = 0; i < WatchedRooms.Num(); ++i)
+    {
+        if (WatchedRooms[i].Id == RoomId)
+        {
+            return i;
+        }
+    }
+    return INDEX_NONE;
+}
+
+void UDeskillzHostRoomSwitcherWidget::ScrollToActiveTab()
+{
+    if (!TabsScrollBox || ActiveRoomId.IsEmpty())
+    {
+        return;
+    }
+
+    // Scroll to make active tab visible
+    // Implementation would calculate tab position and scroll
+}
+
+// ============================================================================
+// Event Handlers
+// ============================================================================
+
+void UDeskillzHostRoomSwitcherWidget::OnTabClicked(const FString& RoomId)
+{
+    SetActiveRoom(RoomId);
+    OnRoomSelected.Broadcast(RoomId);
+}
+
+void UDeskillzHostRoomSwitcherWidget::OnTabCloseClicked(const FString& RoomId)
+{
+    OnRoomCloseClicked.Broadcast(RoomId);
+}
+
+void UDeskillzHostRoomSwitcherWidget::OnAddButtonClicked()
+{
+    if (CanAddRoom())
+    {
+        OnAddRoomClicked.Broadcast();
+    }
+}

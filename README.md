@@ -9,19 +9,22 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/deskillz-games-development/unreal-sdk/releases"><img src="https://img.shields.io/badge/version-2.3.0-blue.svg" alt="Version"></a>
-  <a href="https://unrealengine.com"><img src="https://img.shields.io/badge/unreal-4.27%2B%20%7C%205.x-black.svg" alt="Unreal"></a>
-  <a href="https://github.com/deskillz-games-development/unreal-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/Deskillz-Games-Development/unreal-sdk/releases"><img src="https://img.shields.io/badge/version-2.6.0-blue.svg" alt="Version"></a>
+  <a href="https://www.unrealengine.com"><img src="https://img.shields.io/badge/unreal-4.27%2B%20%7C%205.0%2B-black.svg" alt="Unreal"></a>
+  <a href="https://github.com/Deskillz-Games-Development/unreal-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
 </p>
 
 <p align="center">
-  <a href="#installation">Installation</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#features">Features</a> •
-  <a href="#auto-updater">Auto-Updater</a> •
-  <a href="#private-rooms">Private Rooms</a> •
-  <a href="#navigation-deep-links">Navigation Links</a> •
-  <a href="#documentation">Documentation</a> •
+  <a href="#installation">Installation</a> â€¢
+  <a href="#quick-start">Quick Start</a> â€¢
+  <a href="#features">Features</a> â€¢
+  <a href="#auto-updater">Auto-Updater</a> â€¢
+  <a href="#private-rooms">Private Rooms</a> â€¢
+  <a href="#host-system">Host System</a> â€¢
+  <a href="#social-games">Social Games</a> â€¢
+  <a href="#host-spectator-mode">Host Spectator Mode</a> [B]
+  <a href="#navigation-deep-links">Navigation Links</a> â€¢
+  <a href="#documentation">Documentation</a> â€¢
   <a href="#support">Support</a>
 </p>
 
@@ -29,32 +32,32 @@
 
 ## Overview
 
-The Deskillz Unreal SDK enables game developers to integrate their Unreal Engine games with the Deskillz.Games competitive gaming platform. Players can compete in skill-based tournaments, create private rooms to play with friends, and win cryptocurrency prizes (BTC, ETH, SOL, XRP, BNB, USDT, USDC).
+The Deskillz Unreal Engine SDK enables game developers to integrate their UE games with the Deskillz.Games competitive gaming platform. Players can compete in skill-based tournaments, create private rooms to play with friends, host social games with rake systems, and win cryptocurrency prizes (BTC, ETH, SOL, XRP, BNB, USDT, USDC).
 
 ### How It Works (Global Lobby Architecture)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    PLAYER JOURNEY                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. Player opens Deskillz.Games website/app                     │
-│              ↓                                                  │
-│  2. Player browses Global Lobby                                 │
-│     • Select game                                               │
-│     • Choose tournament/match type                              │
-│     • Join matchmaking queue OR private room                    │
-│              ↓                                                  │
-│  3. Match found → Deep link sent to your game                   │
-│     deskillz://launch?matchId=abc123&token=xyz...               │
-│              ↓                                                  │
-│  4. Your game app opens via deep link                           │
-│              ↓                                                  │
-│  5. SDK receives match data → Start gameplay                    │
-│              ↓                                                  │
-│  6. Player plays → Score submitted → Results shown              │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
++------------------------------------------------------------------+
+|                    PLAYER JOURNEY                                |
++------------------------------------------------------------------+
+|                                                                  |
+|  1. Player opens Deskillz.Games website/app                      |
+|              |                                                   |
+|  2. Player browses Global Lobby                                  |
+|     - Select game                                                |
+|     - Choose tournament/match type                               |
+|     - Join matchmaking queue OR private room                     |
+|              |                                                   |
+|  3. Match found -> Deep link sent to your game                   |
+|     deskillz://launch?matchId=abc123&token=xyz...                |
+|              |                                                   |
+|  4. Your game app opens via deep link                            |
+|              |                                                   |
+|  5. SDK receives match data -> Start gameplay                    |
+|              |                                                   |
+|  6. Player plays -> Score submitted -> Results shown             |
+|                                                                  |
++------------------------------------------------------------------+
 ```
 
 **Key Point:** Matchmaking happens in the Deskillz platform, NOT in your game. Your SDK just needs to:
@@ -64,183 +67,147 @@ The Deskillz Unreal SDK enables game developers to integrate their Unreal Engine
 
 ## Requirements
 
-- **Unreal Engine:** 4.27+ or 5.x
-- **Platforms:** iOS 12+, Android 6.0+ (API 23)
+- **Unreal Engine:** 4.27+ or 5.0+
+- **Platforms:** iOS 12+, Android 5.0+ (API 21)
 - **Build Tools:** Xcode 14+ (iOS), Android NDK (Android)
-- **C++ Standard:** C++17
+- **C++ Standard:** C++17 or later
 
 ## Installation
 
-### Option 1: Clone to Plugins Folder (Recommended)
+### Option 1: Git Clone (Recommended)
 
 ```bash
+# Navigate to your project's Plugins folder
 cd YourProject/Plugins
-git clone https://github.com/deskillz/unreal-sdk.git DeskillzSDK
-```
 
-Then regenerate project files (right-click `.uproject` → "Generate Visual Studio project files")
+# Clone the SDK
+git clone https://github.com/Deskillz-Games-Development/unreal-sdk.git DeskillzSDK
+
+# Regenerate project files
+```
 
 ### Option 2: Download ZIP
 
-1. Download latest from [deskillz.games/developer](https://deskillz.games/developer)
+1. Download latest release from [GitHub Releases](https://github.com/Deskillz-Games-Development/unreal-sdk/releases)
 2. Extract to `YourProject/Plugins/DeskillzSDK/`
 3. Regenerate project files
 
-### Enable the Plugin
+### Option 3: Git Submodule
 
-1. Open your project in Unreal Editor
-2. Go to **Edit → Plugins**
-3. Search for "Deskillz"
-4. Check **Enabled**
-5. Restart the editor
-
-Or add to your `.uproject` file:
-
-```json
-{
-  "Plugins": [
-    {
-      "Name": "Deskillz",
-      "Enabled": true
-    }
-  ]
-}
+```bash
+cd YourProject
+git submodule add https://github.com/Deskillz-Games-Development/unreal-sdk.git Plugins/DeskillzSDK
 ```
 
-### Add Module Dependency
+### Setup
 
-In your game's `Build.cs` file:
+1. Enable the plugin in **Edit -> Plugins -> Deskillz SDK**
+2. Add to your `.Build.cs`:
 
 ```csharp
-PublicDependencyModuleNames.AddRange(new string[] {
-    "Deskillz"
-});
+PublicDependencyModuleNames.AddRange(new string[] { "DeskillzSDK" });
 ```
 
-### Configuration
-
-Go to **Project Settings → Plugins → Deskillz SDK**:
-
-| Setting | Description |
-|---------|-------------|
-| API Key | Your API key from Developer Portal |
-| Game ID | Your game's unique identifier |
-| Environment | Sandbox (testing) or Production |
-| Enable Logging | Show debug logs |
-
-Or set in C++:
-
-```cpp
-UDeskillzConfig* Config = GetMutableDefault<UDeskillzConfig>();
-Config->ApiKey = TEXT("your-api-key");
-Config->GameId = TEXT("your-game-id");
-Config->Environment = EDeskillzEnvironment::Sandbox;
-```
+3. Create a `DeskillzConfig` data asset in your Content folder
+4. Enter your API Key and Game ID (get from [deskillz.games/developer](https://deskillz.games/developer))
 
 ## Quick Start
 
-### 1. Initialize the SDK (C++)
+### 1. Initialize the SDK
 
 ```cpp
-// YourGameMode.h
-#pragma once
-#include "Core/DeskillzSDK.h"
-#include "Core/DeskillzUpdater.h"
-#include "Lobby/DeskillzDeepLinkHandler.h"
-#include "GameFramework/GameModeBase.h"
-#include "YourGameMode.generated.h"
+#include "DeskillzSDK.h"
+#include "Lobby/DeepLinkHandler.h"
 
-UCLASS()
-class AYourGameMode : public AGameModeBase
-{
-    GENERATED_BODY()
-    
-public:
-    virtual void BeginPlay() override;
-    
-private:
-    UFUNCTION()
-    void HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Parameters);
-    
-    UFUNCTION()
-    void HandleMatchLaunch(const FString& MatchId, const FString& AuthToken);
-    
-    UFUNCTION()
-    void HandleMatchReady(const FDeskillzMatchLaunchData& LaunchData);
-    
-    UFUNCTION()
-    void HandleValidationFailed(const FString& Reason, const FDeskillzMatchLaunchData& Data);
-    
-    UFUNCTION()
-    void HandleUpdateAvailable(const FDeskillzUpdateInfo& UpdateInfo);
-};
-```
-
-```cpp
-// YourGameMode.cpp
-#include "YourGameMode.h"
-
-void AYourGameMode::BeginPlay()
+void AMyGameMode::BeginPlay()
 {
     Super::BeginPlay();
     
     // Initialize SDK
-    UDeskillzSDK* SDK = UDeskillzSDK::Get(this);
-    SDK->Initialize();
+    UDeskillzSDK::Initialize();
     
     // Initialize Deep Link Handler
-    UDeskillzDeepLinkHandler* Handler = UDeskillzDeepLinkHandler::Get();
-    Handler->Initialize();
+    UDeepLinkHandler* DeepLinkHandler = UDeepLinkHandler::Get();
+    DeepLinkHandler->Initialize();
     
-    // Navigation events (NEW in v2.0)
-    Handler->OnNavigationReceived.AddDynamic(this, &AYourGameMode::HandleNavigation);
+    // Bind navigation events (NEW in v2.0)
+    DeepLinkHandler->OnNavigationReceived.AddDynamic(
+        this, &AMyGameMode::HandleNavigation);
     
-    // Match launch events
-    Handler->OnMatchLaunchReceived.AddDynamic(this, &AYourGameMode::HandleMatchLaunch);
-    Handler->OnMatchReady.AddDynamic(this, &AYourGameMode::HandleMatchReady);
-    Handler->OnValidationFailed.AddDynamic(this, &AYourGameMode::HandleValidationFailed);
+    // Bind match launch events
+    DeepLinkHandler->OnMatchLaunchReceived.AddDynamic(
+        this, &AMyGameMode::HandleMatchLaunch);
+    DeepLinkHandler->OnMatchReady.AddDynamic(
+        this, &AMyGameMode::OnMatchReady);
+    DeepLinkHandler->OnValidationFailed.AddDynamic(
+        this, &AMyGameMode::OnValidationFailed);
     
     // Check for updates (NEW in v2.3)
     UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
-    Updater->SetCurrentVersion(TEXT("1.0.0"), 1);
-    Updater->OnUpdateAvailable.AddDynamic(this, &AYourGameMode::HandleUpdateAvailable);
+    Updater->SetCurrentVersion(GetGameVersion(), GetVersionCode());
     Updater->CheckForUpdates();
     
     // Process pending deep links (cold start)
-    if (Handler->HasPendingDeepLink())
+    if (DeepLinkHandler->HasPendingDeepLink())
     {
-        Handler->ProcessPendingDeepLinks();
+        DeepLinkHandler->ProcessPendingDeepLinks();
     }
-    
-    UE_LOG(LogTemp, Log, TEXT("Deskillz SDK 2.3.0 initialized!"));
 }
 
-void AYourGameMode::HandleNavigation(EDeskillzNavigationAction Action, const TMap<FString, FString>& Parameters)
+void AMyGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    UDeepLinkHandler* DeepLinkHandler = UDeepLinkHandler::Get();
+    DeepLinkHandler->OnNavigationReceived.RemoveDynamic(
+        this, &AMyGameMode::HandleNavigation);
+    DeepLinkHandler->OnMatchLaunchReceived.RemoveDynamic(
+        this, &AMyGameMode::HandleMatchLaunch);
+    
+    Super::EndPlay(EndPlayReason);
+}
+```
+
+### 2. Handle Navigation Deep Links (NEW in v2.0)
+
+```cpp
+void AMyGameMode::HandleNavigation(
+    EDeskillzNavigationAction Action,
+    const TMap<FString, FString>& Parameters)
 {
     switch (Action)
     {
         case EDeskillzNavigationAction::Tournaments:
-            ShowTournaments();
+            UIManager->ShowTournaments();
             break;
+            
         case EDeskillzNavigationAction::Wallet:
-            ShowWallet();
+            UIManager->ShowWallet();
             break;
+            
         case EDeskillzNavigationAction::Profile:
-            ShowProfile();
+            UIManager->ShowProfile();
             break;
+            
         case EDeskillzNavigationAction::Game:
             if (const FString* GameId = Parameters.Find(TEXT("id")))
             {
-                ShowGameDetails(*GameId);
+                UIManager->ShowGameDetails(*GameId);
             }
             break;
+            
         case EDeskillzNavigationAction::Settings:
-            ShowSettings();
+            UIManager->ShowSettings();
             break;
     }
 }
+```
 
-void AYourGameMode::HandleMatchLaunch(const FString& MatchId, const FString& AuthToken)
+### 3. Handle Match Launch Deep Links
+
+```cpp
+// Simple handler - just matchId and token
+void AMyGameMode::HandleMatchLaunch(
+    const FString& MatchId,
+    const FString& AuthToken)
 {
     // Store auth token for API calls
     UDeskillzApi::SetAuthToken(AuthToken);
@@ -248,614 +215,647 @@ void AYourGameMode::HandleMatchLaunch(const FString& MatchId, const FString& Aut
     // Load match level
     UGameplayStatics::OpenLevel(this, TEXT("MatchLevel"));
     
-    UE_LOG(LogTemp, Log, TEXT("Launching match: %s"), *MatchId);
+    UE_LOG(LogDeskillz, Log, TEXT("Launching match: %s"), *MatchId);
 }
 
-void AYourGameMode::HandleMatchReady(const FDeskillzMatchLaunchData& LaunchData)
+// Full match data handler
+void AMyGameMode::OnMatchReady(const FMatchLaunchData& Data)
 {
-    UE_LOG(LogTemp, Log, TEXT("Match ready: %s"), *LaunchData.MatchId);
-    UE_LOG(LogTemp, Log, TEXT("Opponent: %s (Rating: %d)"), *LaunchData.OpponentName, LaunchData.OpponentRating);
-    UE_LOG(LogTemp, Log, TEXT("Entry Fee: %.2f %s"), LaunchData.EntryFee, *LaunchData.Currency);
+    UE_LOG(LogDeskillz, Log, TEXT("Match ready: %s"), *Data.MatchId);
+    UE_LOG(LogDeskillz, Log, TEXT("Opponent: %s (Rating: %d)"),
+        *Data.OpponentName, Data.OpponentRating);
+    UE_LOG(LogDeskillz, Log, TEXT("Entry Fee: %.2f %s"),
+        Data.EntryFee, *Data.Currency);
+    UE_LOG(LogDeskillz, Log, TEXT("Duration: %ds"), Data.Duration);
     
-    // Start your game
-    StartGame(LaunchData);
+    // Store match data
+    CurrentMatchData = Data;
+    
+    // Load game level
+    UGameplayStatics::OpenLevel(this, TEXT("GameLevel"));
 }
 
-void AYourGameMode::HandleValidationFailed(const FString& Reason, const FDeskillzMatchLaunchData& Data)
+void AMyGameMode::OnValidationFailed(
+    const FString& Reason,
+    const FMatchLaunchData& Data)
 {
-    UE_LOG(LogTemp, Error, TEXT("Match validation failed: %s"), *Reason);
+    UE_LOG(LogDeskillz, Error, TEXT("Match validation failed: %s"), *Reason);
+    // Show error and return to main menu
     ShowErrorDialog(Reason);
 }
-
-void AYourGameMode::HandleUpdateAvailable(const FDeskillzUpdateInfo& UpdateInfo)
-{
-    UE_LOG(LogTemp, Log, TEXT("Update available: %s"), *UpdateInfo.LatestVersion);
-    ShowUpdateDialog(UpdateInfo);
-}
 ```
 
-### 2. Initialize the SDK (Blueprint)
-
-1. Get **Deskillz SDK** node
-2. Call **Initialize** with your API key
-3. Bind to **OnMatchLaunch** and **OnNavigationReceived** events
-
-### 3. Submit Score
+### 4. Submit Score
 
 ```cpp
-#include "Lobby/DeskillzBridge.h"
-
-void AYourGameMode::OnGameOver(int64 FinalScore)
+// When player finishes the game
+void AMyGameMode::OnGameComplete(int32 FinalScore, float PlayDuration)
 {
-    UDeskillzBridge* Bridge = UDeskillzBridge::Get();
-    
-    // Submit score (auto-encrypted with HMAC-SHA256)
-    Bridge->SubmitScore(FinalScore, FDeskillzCallback::CreateLambda([Bridge]()
+    // Score is automatically encrypted with HMAC-SHA256
+    UDeskillzSDK::SubmitScore(
+        FinalScore,
+        PlayDuration,
+        FOnScoreSubmitted::CreateUObject(this, &AMyGameMode::OnScoreSubmitted)
+    );
+}
+
+void AMyGameMode::OnScoreSubmitted(bool bSuccess, const FString& Message)
+{
+    if (bSuccess)
     {
-        UE_LOG(LogTemp, Log, TEXT("Score submitted!"));
-        
-        // Return to Deskillz app
-        Bridge->ReturnToMainApp(EDeskillzReturnDestination::Results);
-    }));
-}
-```
-
----
-
-## Auto-Updater (NEW in v2.3.0)
-
-The SDK includes automatic update checking to ensure players always have the latest version of your game. This integrates with the Deskillz APK Hosting system.
-
-### Basic Usage (C++)
-
-```cpp
-#include "Core/DeskillzUpdater.h"
-
-void AMyGameMode::BeginPlay()
-{
-    Super::BeginPlay();
-    
-    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
-    
-    // Set current app version (must match your APK settings)
-    Updater->SetCurrentVersion(TEXT("1.0.0"), 1);
-    
-    // Bind events
-    Updater->OnUpdateCheckStarted.AddDynamic(this, &AMyGameMode::OnCheckStarted);
-    Updater->OnUpdateAvailable.AddDynamic(this, &AMyGameMode::OnUpdateAvailable);
-    Updater->OnForceUpdateRequired.AddDynamic(this, &AMyGameMode::OnForcedUpdate);
-    Updater->OnNoUpdateNeeded.AddDynamic(this, &AMyGameMode::OnNoUpdate);
-    Updater->OnUpdateCheckFailed.AddDynamic(this, &AMyGameMode::OnCheckFailed);
-    
-    // Check for updates
-    Updater->CheckForUpdates();
-}
-
-void AMyGameMode::OnCheckStarted()
-{
-    // Show loading indicator
-    ShowLoadingSpinner();
-}
-
-void AMyGameMode::OnUpdateAvailable(const FDeskillzUpdateInfo& Info)
-{
-    UE_LOG(LogTemp, Log, TEXT("Optional update available: %s (%s)"), 
-        *Info.LatestVersion, *UDeskillzUpdater::FormatFileSize(Info.FileSize));
-    UE_LOG(LogTemp, Log, TEXT("Release notes: %s"), *Info.ReleaseNotes);
-    
-    // Show custom update dialog (can skip)
-    ShowUpdateDialog(Info, true);
-}
-
-void AMyGameMode::OnForcedUpdate(const FDeskillzUpdateInfo& Info)
-{
-    UE_LOG(LogTemp, Warning, TEXT("FORCED update required: %s"), *Info.LatestVersion);
-    
-    // Show forced update dialog (no skip option)
-    ShowUpdateDialog(Info, false);
-    
-    // Pause game - user must update
-    UGameplayStatics::SetGamePaused(GetWorld(), true);
-}
-
-void AMyGameMode::OnNoUpdate()
-{
-    UE_LOG(LogTemp, Log, TEXT("App is up to date!"));
-    HideLoadingSpinner();
-    ShowMainMenu();
-}
-
-void AMyGameMode::OnCheckFailed(const FString& Error)
-{
-    UE_LOG(LogTemp, Warning, TEXT("Update check failed: %s"), *Error);
-    // Continue anyway - don't block users on network errors
-    HideLoadingSpinner();
-    ShowMainMenu();
-}
-
-// Called from Update button in your UI
-void AMyGameMode::AcceptUpdate()
-{
-    UDeskillzUpdater::Get()->StartUpdate(); // Opens download URL in browser
-}
-
-// Called from Skip button (optional updates only)
-void AMyGameMode::SkipUpdate()
-{
-    UDeskillzUpdater::Get()->SkipUpdate(); // Remembers skipped version
-    ShowMainMenu();
-}
-```
-
-### Blueprint Usage
-
-1. **Get Deskillz Updater** node
-2. Call **Set Current Version** with your version string and code
-3. Bind to events: **On Update Available**, **On Force Update Required**, **On No Update Needed**, **On Update Check Failed**
-4. Call **Check For Updates**
-5. Use **Start Update** to open download URL
-6. Use **Skip Update** to dismiss (optional updates only)
-
-### Configuration Options
-
-```cpp
-UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
-
-// Enable/disable features
-Updater->SetAutoCheckEnabled(true);           // Check automatically on startup
-Updater->SetShowOptionalUpdates(true);        // Show dialog for optional updates
-Updater->SetRememberSkippedVersion(true);     // Don't re-prompt for skipped versions
-
-// Clear remembered skip (e.g., after certain time)
-Updater->ClearSkippedVersion();
-```
-
-### FDeskillzUpdateInfo Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `LatestVersion` | FString | Version string (e.g., "1.2.0") |
-| `VersionCode` | int32 | Integer version code (e.g., 10200) |
-| `bUpdateAvailable` | bool | Whether an update is available |
-| `bIsForced` | bool | Whether update is required (can't skip) |
-| `DownloadUrl` | FString | Direct APK download URL |
-| `FileSize` | int64 | File size in bytes |
-| `ReleaseNotes` | FString | Changelog/release notes text |
-| `ErrorMessage` | FString | Error message if check failed |
-
-### Update Events (Delegates)
-
-| Delegate | Parameters | Description |
-|----------|------------|-------------|
-| `OnUpdateCheckStarted` | None | Update check has begun |
-| `OnUpdateCheckCompleted` | `EDeskillzUpdateResult`, `FDeskillzUpdateInfo` | Check completed |
-| `OnUpdateAvailable` | `FDeskillzUpdateInfo` | Optional update available |
-| `OnForceUpdateRequired` | `FDeskillzUpdateInfo` | Required update - must update |
-| `OnNoUpdateNeeded` | None | App is already up to date |
-| `OnUpdateCheckFailed` | `FString Error` | Network or parsing error |
-| `OnUpdateAccepted` | `FDeskillzUpdateInfo` | User clicked "Update" |
-| `OnUpdateSkipped` | `FDeskillzUpdateInfo` | User clicked "Skip" |
-
-### Utility Functions
-
-```cpp
-// Compare two version strings
-int32 Result = UDeskillzUpdater::CompareVersions(TEXT("1.2.0"), TEXT("1.1.5"));
-// Result > 0: First is newer
-// Result < 0: Second is newer
-// Result == 0: Same version
-
-// Format file size for display
-FString Size = UDeskillzUpdater::FormatFileSize(54976512);
-// Returns: "52.4 MB"
-```
-
-### Version Code Best Practices
-
-```cpp
-// Recommended version code format: MAJOR * 10000 + MINOR * 100 + PATCH
-// Examples:
-// 1.0.0  → 10000
-// 1.2.0  → 10200
-// 1.2.3  → 10203
-// 2.0.0  → 20000
-
-// In your Android build settings (DefaultEngine.ini):
-// [/Script/AndroidRuntimeSettings.AndroidRuntimeSettings]
-// VersionDisplayName=1.0.0
-// StoreVersion=10000
-```
-
----
-
-## Private Rooms (NEW in v2.2.0)
-
-Players can create private rooms to play with friends! The SDK includes a full Room API and pre-built UMG widgets.
-
-### Room API (C++)
-
-```cpp
-#include "Rooms/DeskillzRooms.h"
-
-// Get room subsystem
-UDeskillzRooms* Rooms = UDeskillzRooms::Get(this);
-
-// Create a room
-FCreateRoomConfig Config;
-Config.Name = TEXT("My Room");
-Config.EntryFee = 5.00f;
-Config.EntryCurrency = TEXT("USDT");
-Config.MinPlayers = 2;
-Config.MaxPlayers = 4;
-Config.Mode = ERoomMode::Sync;
-Config.Visibility = ERoomVisibility::PublicListed;
-
-FOnRoomSuccess OnSuccess;
-OnSuccess.BindLambda([](const FPrivateRoom& Room) {
-    UE_LOG(LogTemp, Log, TEXT("Room created: %s"), *Room.RoomCode);
-});
-
-FOnRoomError OnError;
-OnError.BindLambda([](const FRoomError& Error) {
-    UE_LOG(LogTemp, Error, TEXT("Error: %s"), *Error.Message);
-});
-
-Rooms->CreateRoom(Config, OnSuccess, OnError);
-
-// Quick create with defaults
-Rooms->QuickCreateRoom(TEXT("Quick Match"), 1.00f, OnSuccess, OnError);
-
-// Join by code
-Rooms->JoinRoom(TEXT("DSKZ-AB3C"), OnSuccess, OnError);
-
-// Browse public rooms
-FOnRoomListSuccess OnListSuccess;
-OnListSuccess.BindLambda([](const TArray<FPrivateRoom>& RoomList) {
-    for (const FPrivateRoom& Room : RoomList)
-    {
-        UE_LOG(LogTemp, Log, TEXT("Room: %s"), *Room.Name);
+        UE_LOG(LogDeskillz, Log, TEXT("Score submitted successfully!"));
+        UDeskillzSDK::EndMatch();
     }
-});
-Rooms->GetPublicRooms(OnListSuccess, OnError);
-
-// Get room by code (preview before joining)
-Rooms->GetRoomByCode(TEXT("DSKZ-AB3C"), OnSuccess, OnError);
-
-// Ready up
-Rooms->SetReady(true);
-
-// Send chat message
-Rooms->SendChat(TEXT("Hello everyone!"));
-
-// Leave room
-FOnRoomActionSuccess OnActionSuccess;
-OnActionSuccess.BindLambda([]() {
-    UE_LOG(LogTemp, Log, TEXT("Left room"));
-});
-Rooms->LeaveRoom(OnActionSuccess, OnError);
-
-// Host: Cancel room
-Rooms->CancelRoom(OnActionSuccess, OnError);
-
-// Host: Kick player
-Rooms->KickPlayer(PlayerId, OnActionSuccess, OnError);
-
-// Host: Start match
-Rooms->StartMatch(OnActionSuccess, OnError);
+    else
+    {
+        UE_LOG(LogDeskillz, Error, TEXT("Score submission failed: %s"), *Message);
+    }
+}
 ```
-
-### Room Events
-
-```cpp
-// Get room subsystem
-UDeskillzRooms* Rooms = UDeskillzRooms::Get(this);
-
-// Subscribe to room events
-Rooms->OnRoomJoined.AddDynamic(this, &AMyClass::HandleRoomJoined);
-Rooms->OnRoomUpdated.AddDynamic(this, &AMyClass::HandleRoomUpdated);
-Rooms->OnPlayerJoined.AddDynamic(this, &AMyClass::HandlePlayerJoined);
-Rooms->OnPlayerLeft.AddDynamic(this, &AMyClass::HandlePlayerLeft);
-Rooms->OnPlayerReadyChanged.AddDynamic(this, &AMyClass::HandleReadyChanged);
-Rooms->OnCountdownStarted.AddDynamic(this, &AMyClass::HandleCountdownStarted);
-Rooms->OnCountdownTick.AddDynamic(this, &AMyClass::HandleCountdownTick);
-Rooms->OnMatchLaunching.AddDynamic(this, &AMyClass::HandleMatchLaunching);
-Rooms->OnChatReceived.AddDynamic(this, &AMyClass::HandleChatReceived);
-Rooms->OnKickedFromRoom.AddDynamic(this, &AMyClass::HandleKicked);
-Rooms->OnRoomCancelled.AddDynamic(this, &AMyClass::HandleRoomCancelled);
-Rooms->OnRoomLeft.AddDynamic(this, &AMyClass::HandleRoomLeft);
-```
-
-### Pre-Built Room UI (UMG Widgets)
-
-The SDK includes ready-to-use UMG widgets for private rooms:
-
-```cpp
-#include "Widgets/Rooms/DeskillzPrivateRoomUI.h"
-
-// Get or create the UI
-UDeskillzPrivateRoomUI* RoomUI = UDeskillzPrivateRoomUI::GetOrCreate(this);
-
-// Show room browser (list of public rooms)
-RoomUI->ShowRoomList();
-
-// Show create room form
-RoomUI->ShowCreateRoom();
-
-// Show join by code dialog
-RoomUI->ShowJoinRoom();
-
-// Show with pre-filled code (e.g., from deep link or share)
-RoomUI->ShowJoinRoomWithCode(TEXT("DSKZ-AB3C"));
-
-// Show room lobby (waiting room)
-RoomUI->ShowRoomLobby();
-
-// Show room lobby with specific room data
-RoomUI->ShowRoomLobbyWithRoom(Room);
-
-// Quick actions (create/join and auto-show lobby)
-RoomUI->QuickCreateRoom(TEXT("My Room"), 5.00f);
-RoomUI->QuickJoinRoom(TEXT("DSKZ-AB3C"));
-
-// Hide all room UI
-RoomUI->HideAll();
-
-// Close and remove from viewport
-RoomUI->Close();
-```
-
-### Room UI Widgets
-
-| Widget | Files | Description |
-|--------|-------|-------------|
-| **DeskillzPrivateRoomUI** | `.h/.cpp` | Main UI manager |
-| **DeskillzRoomListWidget** | `.h/.cpp` | Browse public rooms with search/filter/sort |
-| **DeskillzCreateRoomWidget** | `.h/.cpp` | Room creation form with validation |
-| **DeskillzJoinRoomWidget** | `.h/.cpp` | Enter room code dialog with preview |
-| **DeskillzRoomLobbyWidget** | `.h/.cpp` | Waiting room with player list, chat, countdown |
-| **DeskillzRoomPlayerCard** | `.h/.cpp` | Individual player card with ready status |
-
-Widget locations:
-- Headers: `Source/Deskillz/Public/Widgets/Rooms/`
-- Implementation: `Source/Deskillz/Private/Widgets/Rooms/`
-
-### Room UI Events
-
-```cpp
-// Subscribe to UI navigation events
-RoomUI->OnPanelShown.AddDynamic(this, &AMyClass::HandlePanelShown);
-RoomUI->OnRoomCreatedFromUI.AddDynamic(this, &AMyClass::HandleRoomCreated);
-RoomUI->OnRoomJoinedFromUI.AddDynamic(this, &AMyClass::HandleRoomJoined);
-RoomUI->OnAllHidden.AddDynamic(this, &AMyClass::HandleUIHidden);
-```
-
-### Room API (Blueprint)
-
-All room functionality is available in Blueprints:
-
-1. Get **Deskillz Rooms** subsystem
-2. Call **Create Room**, **Join Room**, or **Get Public Rooms**
-3. Bind to success/error events
-
-Available Blueprint nodes:
-- **Create Room** - Create a new private room
-- **Join Room** - Join by room code
-- **Get Public Rooms** - Browse available rooms
-- **Set Ready** - Toggle ready status
-- **Leave Room** - Exit current room
-- **Send Chat** - Send chat message
-- **Start Match** (Host) - Begin the game
-- **Cancel Room** (Host) - Cancel the room
-- **Kick Player** (Host) - Remove a player
-
----
-
-## Navigation Deep Links (NEW in v2.0)
-
-The Deskillz platform can send navigation deep links to your game for seamless user experience.
-
-### Supported Navigation Actions
-
-| URL | Action | Description |
-|-----|--------|-------------|
-| `deskillz://tournaments` | Tournaments | Show tournament list |
-| `deskillz://wallet` | Wallet | Show wallet screen |
-| `deskillz://profile` | Profile | Show user profile |
-| `deskillz://game?id=xxx` | Game | Show specific game details |
-| `deskillz://settings` | Settings | Show settings screen |
-| `deskillz://launch?matchId=xxx` | Match | Start match |
-
-### EDeskillzNavigationAction Enum
-
-```cpp
-UENUM(BlueprintType)
-enum class EDeskillzNavigationAction : uint8
-{
-    None,
-    Tournaments,
-    Wallet,
-    Profile,
-    Game,
-    Settings
-};
-```
-
-### Testing Navigation Links
-
-```cpp
-// Simulate navigation deep links for testing
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://wallet"));
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://game?id=battle-blocks"));
-
-// Test match launch
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(
-    TEXT("deskillz://launch?matchId=test-123&token=test-token"));
-```
-
-## Events
-
-Subscribe to SDK events for full control:
-
-```cpp
-// SDK ready
-UDeskillzSDK::Get()->OnReady.AddDynamic(this, &AMyClass::OnSDKReady);
-
-// Match lifecycle
-UDeskillzSDK::Get()->OnMatchReady.AddDynamic(this, &AMyClass::OnMatchReady);
-UDeskillzSDK::Get()->OnMatchStart.AddDynamic(this, &AMyClass::OnMatchStart);
-UDeskillzSDK::Get()->OnMatchComplete.AddDynamic(this, &AMyClass::OnMatchComplete);
-
-// Real-time multiplayer
-UDeskillzSDK::Get()->OnPlayerJoined.AddDynamic(this, &AMyClass::OnPlayerJoined);
-UDeskillzSDK::Get()->OnMessageReceived.AddDynamic(this, &AMyClass::OnMessageReceived);
-
-// Deep Link Navigation (NEW in v2.0)
-UDeskillzDeepLinkHandler::Get()->OnNavigationReceived.AddDynamic(this, &AMyClass::HandleNavigation);
-UDeskillzDeepLinkHandler::Get()->OnMatchLaunchReceived.AddDynamic(this, &AMyClass::HandleMatchLaunch);
-
-// Private Room Events (NEW in v2.2)
-UDeskillzRooms::Get(this)->OnRoomJoined.AddDynamic(this, &AMyClass::HandleRoomJoined);
-UDeskillzRooms::Get(this)->OnMatchLaunching.AddDynamic(this, &AMyClass::HandleRoomMatchStart);
-
-// Update Events (NEW in v2.3)
-UDeskillzUpdater::Get()->OnUpdateAvailable.AddDynamic(this, &AMyClass::HandleUpdateAvailable);
-UDeskillzUpdater::Get()->OnForceUpdateRequired.AddDynamic(this, &AMyClass::HandleForcedUpdate);
-```
-
-## Match Launch Deep Link Format
-
-Your game will receive match launch deep links in this format:
-
-```
-deskillz://launch?
-  matchId=<match_id>&
-  token=<auth_token>&
-  gameId=<game_id>&
-  mode=<SYNC|ASYNC>&
-  opponentId=<opponent_id>&
-  entryFee=<amount>&
-  currency=<BTC|ETH|USDT|etc>&
-  duration=<seconds>&
-  seed=<random_seed>
-```
-
-The SDK parses this automatically - you just handle the `OnMatchReady` or `OnMatchLaunchReceived` events.
-
-## FMatchLaunchData Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `MatchId` | FString | Unique match identifier |
-| `TournamentId` | FString | Tournament this match belongs to |
-| `Token` | FString | Authentication token for API calls |
-| `Duration` | int32 | Match duration in seconds |
-| `RandomSeed` | int32 | Seed for deterministic gameplay |
-| `EntryFee` | float | Entry fee amount |
-| `Currency` | FString | Currency (BTC, ETH, USDT, etc.) |
-| `MatchType` | EMatchType | Synchronous or Asynchronous |
-| `OpponentId` | FString | Opponent player ID |
-| `OpponentName` | FString | Opponent display name |
-| `OpponentRating` | int32 | Opponent skill rating |
-
-## Architecture: Global Lobby vs Old SDK-Based
-
-| Aspect | Old (SDK-Based) | New (Global Lobby) ✅ |
-|--------|-----------------|----------------------|
-| Matchmaking Location | Inside your game | Deskillz website/app |
-| Player Pool | Fragmented per-game | Unified across all games |
-| User Experience | Inconsistent | Consistent platform UI |
-| SDK Complexity | High (matchmaking logic) | Low (deep links only) |
-| Developer Burden | Heavy | Minimal |
-| Private Rooms | Complex to implement | Built into platform + SDK |
-| NPC Opponents | SDK handles | Platform handles |
-| Navigation | N/A | Full deep link support |
 
 ## Features
 
 | Feature | Description |
 |---------|-------------|
-| 🔄 **Auto-Updater** | Automatic game updates with forced/optional prompts (NEW in v2.3) |
-| 🔗 **Navigation Deep Links** | Navigate to any screen from Deskillz app (NEW in v2.0) |
-| 🎮 **Match Launch Deep Links** | Receive match data from Global Lobby |
-| 🚪 **Private Rooms** | Create/join rooms with friends (NEW in v2.2) |
-| 🎨 **Pre-built Room UI** | Ready-to-use UMG widgets (NEW in v2.2) |
-| 🏆 **Asynchronous Tournaments** | Players compete separately, scores compared |
-| ⚡ **Real-time Multiplayer** | 2-10 players competing simultaneously |
-| 🎯 **Custom Stages** | Player-created private rooms |
-| 💰 **Cryptocurrency Prizes** | BTC, ETH, SOL, XRP, BNB, USDT, USDC |
-| 🎨 **Built-in UI** | Pre-made UMG widget components with themes |
-| 🛡️ **Anti-Cheat** | Server-side validation and protection |
-| 🔐 **Score Encryption** | HMAC-SHA256 signed submission |
-| 📘 **Blueprint Support** | Full Blueprint integration |
+| [TROPHY] **Tournaments** | Async and real-time competitive matches |
+| [COIN] **Crypto Prizes** | BTC, ETH, SOL, XRP, BNB, USDT, USDC |
+| [USERS] **Private Rooms** | Play with friends using room codes |
+| [HOST] **Host System** | 6-tier host program with revenue sharing (NEW v2.6) |
+| [CARDS] **Social Games** | Rake-based games with buy-ins (NEW v2.6) |
+| [EYE] **Host Spectator Mode** | Hosts monitor their social rooms (NEW v2.6) |
+| [LIGHTNING] **Real-time Sync** | Sub-100ms latency multiplayer |
+| [SHIELD] **Anti-Cheat** | Score encryption and validation |
+| [DOWNLOAD] **Auto-Updater** | Forced and optional app updates |
+| [ROBOT] **NPC Opponents** | AI players for off-peak hours |
+| [CHART] **Analytics** | Built-in telemetry and insights |
+| [OFFLINE] **Offline Support** | Automatic score caching and retry |
+| [LOCK] **Score Encryption** | HMAC-SHA256 signed submission |
+| [BLUEPRINT] **Blueprint Support** | Full Blueprint integration |
+
+---
+
+## Host System (NEW in v2.6)
+
+The Host System enables users to become verified hosts who can create and manage private rooms, earning revenue through the rake system.
+
+### Host Tiers
+
+| Tier | Name | Revenue Share | Requirements |
+|------|------|---------------|--------------|
+| 0 | Starter | 50% | None |
+| 1 | Bronze | 55% | 10 rooms, $100 earned, 3.5 rating |
+| 2 | Silver | 60% | 50 rooms, $500 earned, 4.0 rating |
+| 3 | Gold | 65% | 150 rooms, $2,000 earned, 4.3 rating |
+| 4 | Platinum | 70% | 500 rooms, $10,000 earned, 4.5 rating |
+| 5 | Diamond | 75% | 1,000 rooms, $50,000 earned, 4.7 rating |
+
+### Host Manager Usage
+
+```cpp
+#include "Host/DeskillzHostManager.h"
+
+void AMyGameMode::InitializeHostSystem()
+{
+    UDeskillzHostManager* HostManager = UDeskillzHostManager::Get();
+    HostManager->Initialize(UserId);
+    
+    // Bind events
+    HostManager->OnHostRegistrationComplete.AddDynamic(
+        this, &AMyGameMode::OnHostRegistered);
+    HostManager->OnTierUpgraded.AddDynamic(
+        this, &AMyGameMode::OnTierUpgraded);
+    HostManager->OnEarningsUpdated.AddDynamic(
+        this, &AMyGameMode::OnEarningsUpdated);
+}
+
+void AMyGameMode::RegisterAsHost()
+{
+    FDeskillzHostRegistrationRequest Request;
+    Request.DisplayName = TEXT("ProHost");
+    Request.Email = TEXT("host@example.com");
+    Request.bAcceptedTerms = true;
+    
+    UDeskillzHostManager::Get()->RegisterAsHost(Request);
+}
+
+void AMyGameMode::OnHostRegistered(bool bSuccess, const FString& Error)
+{
+    if (bSuccess)
+    {
+        UE_LOG(LogDeskillz, Log, TEXT("Registered as host!"));
+    }
+}
+
+void AMyGameMode::OnTierUpgraded(int32 OldTier, int32 NewTier)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("Upgraded from tier %d to %d!"), OldTier, NewTier);
+}
+
+void AMyGameMode::CreateHostRoom()
+{
+    FDeskillzCreateRoomRequest Request;
+    Request.RoomName = TEXT("Pro Poker Night");
+    Request.GameId = TEXT("poker-texas-holdem");
+    Request.MaxPlayers = 8;
+    Request.MinBuyIn = 10.0f;
+    Request.MaxBuyIn = 200.0f;
+    Request.PointValue = 0.01f;
+    Request.RakePercent = 5.0f;
+    Request.RakeCap = 3.0f;
+    
+    UDeskillzHostManager::Get()->CreateRoom(Request);
+}
+
+void AMyGameMode::CheckEarnings()
+{
+    UDeskillzHostManager::Get()->FetchEarnings(EDeskillzEarningsPeriod::Month);
+}
+
+void AMyGameMode::OnEarningsUpdated(const FDeskillzHostEarnings& Earnings)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("Total: $%.2f"), Earnings.TotalEarnings);
+    UE_LOG(LogDeskillz, Log, TEXT("Rake: $%.2f"), Earnings.RakeEarnings);
+    UE_LOG(LogDeskillz, Log, TEXT("Available: $%.2f"), Earnings.AvailableBalance);
+}
+```
+
+---
+
+## Social Games (NEW in v2.6)
+
+Social games enable real-money gameplay with rake collection, buy-ins, rebuys, and cash-outs.
+
+### Social Game Manager Usage
+
+```cpp
+#include "Social/DeskillzSocialGameManager.h"
+#include "Social/DeskillzRakeCalculator.h"
+#include "Social/DeskillzBuyInManager.h"
+
+void AMyGameMode::StartSocialSession()
+{
+    FDeskillzSocialSessionConfig Config;
+    Config.RoomId = TEXT("room-123");
+    Config.GameId = TEXT("poker-texas-holdem");
+    Config.HostId = TEXT("host-456");
+    Config.PointValue = 0.01f;
+    Config.RakePercent = 5.0f;
+    Config.RakeCap = 3.0f;
+    Config.MinBuyIn = 10.0f;
+    Config.MaxBuyIn = 200.0f;
+    Config.bAllowRebuy = true;
+    Config.RebuyPeriodRounds = 5;
+    
+    UDeskillzSocialGameManager* Manager = UDeskillzSocialGameManager::Get();
+    Manager->OnSessionStarted.AddDynamic(this, &AMyGameMode::OnSessionStarted);
+    Manager->OnRoundEnded.AddDynamic(this, &AMyGameMode::OnRoundEnded);
+    Manager->StartSession(Config);
+}
+
+void AMyGameMode::AddPlayerToSession(const FString& PlayerId, float BuyInAmount)
+{
+    UDeskillzSocialGameManager::Get()->AddPlayer(PlayerId, BuyInAmount);
+}
+
+void AMyGameMode::ProcessRound(const FString& WinnerId, float PotAmount)
+{
+    UDeskillzSocialGameManager* Manager = UDeskillzSocialGameManager::Get();
+    Manager->StartRound();
+    // ... gameplay ...
+    Manager->EndRound(WinnerId, PotAmount);
+}
+
+void AMyGameMode::OnRoundEnded(
+    int32 RoundNumber,
+    const FString& WinnerId,
+    float WinnerPayout,
+    float RakeAmount)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("Round %d - Winner: %s, Payout: $%.2f, Rake: $%.2f"),
+        RoundNumber, *WinnerId, WinnerPayout, RakeAmount);
+}
+```
+
+### Rake Calculator
+
+```cpp
+#include "Social/DeskillzRakeCalculator.h"
+
+void AMyGameMode::CalculateRake(float PotAmount)
+{
+    UDeskillzRakeCalculator* Calculator = UDeskillzRakeCalculator::Get();
+    
+    FDeskillzRakeBreakdown Breakdown = Calculator->GetRakeBreakdown(PotAmount);
+    
+    UE_LOG(LogDeskillz, Log, TEXT("Pot: $%.2f"), Breakdown.PotAmount);
+    UE_LOG(LogDeskillz, Log, TEXT("Rake: $%.2f"), Breakdown.TotalRake);
+    UE_LOG(LogDeskillz, Log, TEXT("Winner Payout: $%.2f"), Breakdown.WinnerPayout);
+    UE_LOG(LogDeskillz, Log, TEXT("Host Share: $%.2f"), Breakdown.HostShare);
+    UE_LOG(LogDeskillz, Log, TEXT("Platform Share: $%.2f"), Breakdown.PlatformShare);
+}
+
+float AMyGameMode::EstimateHostEarnings()
+{
+    return UDeskillzRakeCalculator::Get()->EstimateHostEarnings(
+        100.0f,  // Expected pot size
+        50,      // Expected hands
+        3        // Host tier
+    );
+}
+```
+
+### Buy-In Manager
+
+```cpp
+#include "Social/DeskillzBuyInManager.h"
+
+void AMyGameMode::ValidateBuyIn(const FString& PlayerId, float Amount)
+{
+    UDeskillzBuyInManager* Manager = UDeskillzBuyInManager::Get();
+    
+    FDeskillzBuyInValidationResult Result = Manager->GetValidationResult(
+        PlayerId,
+        Amount,
+        false  // bIsRebuy
+    );
+    
+    if (Result.bIsValid)
+    {
+        UE_LOG(LogDeskillz, Log, TEXT("Chips: %d"), Result.ChipsReceived);
+        Manager->ProcessBuyIn(PlayerId, Amount);
+    }
+    else
+    {
+        UE_LOG(LogDeskillz, Error, TEXT("Invalid: %s"), *Result.ErrorMessage);
+    }
+}
+
+TArray<float> AMyGameMode::GetPresetAmounts()
+{
+    return UDeskillzBuyInManager::Get()->GetPresetBuyInAmounts();
+    // Returns: [MinBuyIn, 100x, 200x, MaxBuyIn]
+}
+```
+
+---
+
+## Host Spectator Mode (NEW in v2.6)
+
+Allow hosts to monitor their private social rooms without participating.
+
+> **Important:** This is a **host-only** feature. Only the creator of a private social room can spectate it. General public spectating is not available. Hosts can see the game board and scores but **NOT player hands** (anti-cheat protection).
+
+### Host Spectator Limitations
+
+| Can See | Cannot See |
+|---------|------------|
+| Game board/table state | Player hands/tiles |
+| Current scores/points | Hidden cards |
+| Player turn indicator | Private player info |
+| Chat messages | - |
+| Round results | - |
+
+### Host Spectator Manager Usage
+
+```cpp
+#include "Host/DeskillzHostSpectatorManager.h"
+
+void AMyGameMode::InitializeHostSpectatorMode()
+{
+    // Host must be authenticated first
+    UDeskillzHostSpectatorManager* Manager = UDeskillzHostSpectatorManager::Get();
+    Manager->Initialize();
+    
+    // Bind events for YOUR rooms
+    Manager->OnRoomsFetched.AddDynamic(this, &AMyGameMode::OnHostRoomsFetched);
+    Manager->OnGameStateUpdated.AddDynamic(this, &AMyGameMode::OnGameStateUpdated);
+    Manager->OnRoundEnded.AddDynamic(this, &AMyGameMode::OnRoundEnded);
+    Manager->OnRoomSwitched.AddDynamic(this, &AMyGameMode::OnRoomSwitched);
+}
+
+void AMyGameMode::FetchMyHostRooms()
+{
+    FDeskillzHostRoomFilter Filter;
+    Filter.GameCategory = EDeskillzGameCategory::Social; // Social rooms only
+    Filter.bIsActive = true;
+    
+    UDeskillzHostSpectatorManager::Get()->FetchHostRooms(Filter);
+}
+
+void AMyGameMode::OnHostRoomsFetched(const TArray<FDeskillzHostRoomInfo>& Rooms)
+{
+    for (const FDeskillzHostRoomInfo& Room : Rooms)
+    {
+        UE_LOG(LogDeskillz, Log, TEXT("%s: %d/%d players"),
+            *Room.RoomName, Room.CurrentPlayers, Room.MaxPlayers);
+    }
+}
+
+void AMyGameMode::SpectateMyRoom(const FString& RoomId)
+{
+    // Join YOUR room (see board, NOT hands)
+    UDeskillzHostSpectatorManager::Get()->SpectateRoom(RoomId);
+}
+
+void AMyGameMode::SwitchToAnotherRoom(const FString& OtherRoomId)
+{
+    // Switch between YOUR rooms (multi-room hosting)
+    UDeskillzHostSpectatorManager::Get()->SwitchRoom(OtherRoomId);
+}
+
+void AMyGameMode::OnGameStateUpdated(const FDeskillzHostSpectatorState& State)
+{
+    // Update board (NO hands visible - anti-cheat)
+    UE_LOG(LogDeskillz, Log, TEXT("Round %d - Scores updated"),
+        State.CurrentRound);
+}
+
+void AMyGameMode::OnRoundEnded(int32 RoundNumber, const FString& WinnerId)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("Round %d winner: %s"),
+        RoundNumber, *WinnerId);
+}
+```
+
+---
+
+## Private Rooms
+
+Create custom rooms for friends or public tournaments.
+
+### Room Creation
+
+```cpp
+#include "Rooms/DeskillzRooms.h"
+
+void AMyGameMode::CreatePrivateRoom()
+{
+    FDeskillzRoomConfig Config;
+    Config.Name = TEXT("Friday Night Tournament");
+    Config.GameId = TEXT("your-game-id");
+    Config.MaxPlayers = 8;
+    Config.EntryFee = 5.0f;
+    Config.Currency = TEXT("USDT");
+    Config.bIsPrivate = true;
+    
+    UDeskillzRooms::Get()->CreateRoom(
+        Config,
+        FOnRoomCreated::CreateUObject(this, &AMyGameMode::OnRoomCreated)
+    );
+}
+
+void AMyGameMode::OnRoomCreated(const FDeskillzRoom& Room)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("Room created! Code: %s"), *Room.RoomCode);
+    // Share Room.RoomCode with friends
+}
+
+// Join via code
+void AMyGameMode::JoinRoomByCode(const FString& Code)
+{
+    UDeskillzRooms::Get()->JoinRoomByCode(
+        Code,
+        FOnRoomJoined::CreateUObject(this, &AMyGameMode::OnRoomJoined)
+    );
+}
+
+// Browse public rooms
+void AMyGameMode::BrowsePublicRooms()
+{
+    UDeskillzRooms::Get()->GetPublicRooms(
+        GameId,
+        FOnRoomsLoaded::CreateUObject(this, &AMyGameMode::OnRoomsLoaded)
+    );
+}
+```
+
+### Room Events
+
+```cpp
+void AMyGameMode::BindRoomEvents()
+{
+    UDeskillzRooms* Rooms = UDeskillzRooms::Get();
+    
+    Rooms->OnPlayerJoined.AddDynamic(this, &AMyGameMode::OnPlayerJoined);
+    Rooms->OnPlayerLeft.AddDynamic(this, &AMyGameMode::OnPlayerLeft);
+    Rooms->OnPlayerReady.AddDynamic(this, &AMyGameMode::OnPlayerReady);
+    Rooms->OnCountdownStarted.AddDynamic(this, &AMyGameMode::OnCountdownStarted);
+    Rooms->OnMatchStarting.AddDynamic(this, &AMyGameMode::OnMatchStarting);
+    Rooms->OnChatMessage.AddDynamic(this, &AMyGameMode::OnChatMessage);
+}
+
+void AMyGameMode::OnPlayerJoined(const FDeskillzPlayer& Player)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("%s joined the room"), *Player.Name);
+}
+
+// Host controls
+void AMyGameMode::HostStartMatch()
+{
+    UDeskillzRooms::Get()->StartMatch();  // Host only
+}
+
+void AMyGameMode::HostCancelRoom()
+{
+    UDeskillzRooms::Get()->CancelRoom();  // Host only
+}
+
+void AMyGameMode::HostKickPlayer(const FString& PlayerId)
+{
+    UDeskillzRooms::Get()->KickPlayer(PlayerId);  // Host only
+}
+```
+
+---
+
+## Auto-Updater
+
+Automatically check for and prompt app updates.
+
+### Basic Setup
+
+```cpp
+#include "Core/DeskillzUpdater.h"
+
+void AMyGameMode::InitializeUpdater()
+{
+    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
+    Updater->SetCurrentVersion(TEXT("1.0.0"), 10000);
+    
+    // Bind events
+    Updater->OnUpdateAvailable.AddDynamic(
+        this, &AMyGameMode::HandleOptionalUpdate);
+    Updater->OnForceUpdateRequired.AddDynamic(
+        this, &AMyGameMode::HandleForcedUpdate);
+    Updater->OnNoUpdateNeeded.AddDynamic(
+        this, &AMyGameMode::HandleNoUpdate);
+    Updater->OnUpdateCheckFailed.AddDynamic(
+        this, &AMyGameMode::HandleCheckFailed);
+    
+    // Check for updates
+    Updater->CheckForUpdates();
+}
+
+void AMyGameMode::HandleOptionalUpdate(const FUpdateInfo& Info)
+{
+    UE_LOG(LogDeskillz, Log, TEXT("Update available: %s"), *Info.LatestVersion);
+    UE_LOG(LogDeskillz, Log, TEXT("Size: %s"), *Info.FileSizeFormatted);
+    // Show optional update dialog
+}
+
+void AMyGameMode::HandleForcedUpdate(const FUpdateInfo& Info)
+{
+    // Block app until user updates
+    ShowForcedUpdateDialog(Info);
+}
+
+void AMyGameMode::HandleNoUpdate()
+{
+    UE_LOG(LogDeskillz, Log, TEXT("App is up to date"));
+}
+
+void AMyGameMode::HandleCheckFailed(const FString& Error)
+{
+    UE_LOG(LogDeskillz, Warning, TEXT("Update check failed: %s"), *Error);
+}
+```
+
+### UpdateInfo Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| LatestVersion | FString | Version string (e.g., "1.2.0") |
+| VersionCode | int32 | Integer version (e.g., 10200) |
+| bUpdateAvailable | bool | Whether update exists |
+| bIsForced | bool | Whether update is required |
+| DownloadUrl | FString | APK download URL |
+| FileSize | int64 | File size in bytes |
+| FileSizeFormatted | FString | Human-readable (e.g., "52.4 MB") |
+| ReleaseNotes | FString | Changelog text |
+
+---
+
+## Navigation Deep Links
+
+Handle platform navigation requests:
+
+| URL | Action | Description |
+|-----|--------|-------------|
+| `deskillz://tournaments` | Tournaments | Show tournament list |
+| `deskillz://wallet` | Wallet | Show wallet/balance |
+| `deskillz://profile` | Profile | Show user profile |
+| `deskillz://settings` | Settings | Show settings |
+| `deskillz://game?id=X` | Game | Show specific game |
+| `deskillz://leaderboard?id=X` | Leaderboard | Show leaderboard |
+
+---
 
 ## SDK Structure
 
 ```
 deskillz-unreal-sdk/
-├── Source/DeskillzSDK/
-│   ├── Public/
-│   │   ├── Core/
-│   │   │   ├── DeskillzSDK.h
-│   │   │   ├── DeskillzConfig.h
-│   │   │   ├── DeskillzTypes.h
-│   │   │   ├── DeskillzEvents.h
-│   │   │   └── DeskillzUpdater.h           # NEW in v2.3
-│   │   ├── Match/
-│   │   │   ├── DeskillzMatchmaking.h
-│   │   │   ├── DeskillzMatchManager.h
-│   │   │   └── DeskillzTournamentManager.h
-│   │   ├── Security/
-│   │   │   ├── DeskillzScoreEncryption.h
-│   │   │   ├── DeskillzSecureSubmitter.h
-│   │   │   ├── DeskillzAntiCheat.h
-│   │   │   └── DeskillzSecurityModule.h
-│   │   ├── Rooms/                          # NEW in v2.2
-│   │   │   ├── DeskillzRooms.h
-│   │   │   ├── DeskillzRoomTypes.h
-│   │   │   └── DeskillzRoomClient.h
-│   │   ├── Widgets/
-│   │   │   ├── DeskillzUIManager.h
-│   │   │   ├── DeskillzBaseWidget.h
-│   │   │   ├── DeskillzHUDWidget.h
-│   │   │   ├── DeskillzPopupWidget.h
-│   │   │   ├── DeskillzResultsWidget.h
-│   │   │   └── Rooms/                      # NEW in v2.2
-│   │   │       ├── DeskillzPrivateRoomUI.h
-│   │   │       ├── DeskillzRoomListWidget.h
-│   │   │       ├── DeskillzCreateRoomWidget.h
-│   │   │       ├── DeskillzJoinRoomWidget.h
-│   │   │       ├── DeskillzRoomLobbyWidget.h
-│   │   │       └── DeskillzRoomPlayerCard.h
-│   │   ├── Lobby/
-│   │   │   ├── DeskillzDeepLinkHandler.h
-│   │   │   ├── DeskillzBridge.h
-│   │   │   ├── DeskillzLobbyClient.h
-│   │   │   └── DeskillzLobbyTypes.h
-│   │   ├── Network/
-│   │   │   ├── DeskillzHttpClient.h
-│   │   │   ├── DeskillzApiService.h
-│   │   │   ├── DeskillzNetworkManager.h
-│   │   │   └── DeskillzWebSocket.h
-│   │   ├── Platform/
-│   │   │   ├── DeskillzPlatform.h
-│   │   │   ├── DeskillzDeepLink.h
-│   │   │   ├── DeskillzAppLifecycle.h
-│   │   │   └── DeskillzPushNotifications.h
-│   │   └── Analytics/
-│   │       ├── DeskillzAnalytics.h
-│   │       ├── DeskillzEventTracker.h
-│   │       └── DeskillzTelemetry.h
-│   └── Private/
-│       └── [Implementation files - mirrors Public structure]
-├── Content/
-│   └── UI/
-│       └── [UMG Widget Blueprints]
-├── Resources/
-│   └── [Icons, Images]
-├── Deskillz.uplugin
-└── README.md
++-- Source/
+|   +-- DeskillzSDK/
+|   |   +-- Public/
+|   |   |   +-- Core/
+|   |   |   |   +-- DeskillzSDK.h
+|   |   |   |   +-- DeskillzConfig.h
+|   |   |   |   +-- DeskillzTypes.h
+|   |   |   |   +-- DeskillzEvents.h
+|   |   |   |   +-- DeskillzUpdater.h
+|   |   |   +-- Match/
+|   |   |   |   +-- MatchController.h
+|   |   |   |   +-- MatchTimer.h
+|   |   |   +-- Security/
+|   |   |   |   +-- ScoreManager.h
+|   |   |   |   +-- ScoreEncryption.h
+|   |   |   +-- Rooms/
+|   |   |   |   +-- DeskillzRooms.h
+|   |   |   |   +-- DeskillzRoomTypes.h
+|   |   |   |   +-- DeskillzRoomClient.h
+|   |   |   +-- Host/                              # NEW in v2.6
+|   |   |   |   +-- DeskillzHostManager.h          # Host registration, tiers
+|   |   |   |   +-- DeskillzHostTypes.h            # Host data structures
+|   |   |   +-- Social/                            # NEW in v2.6
+|   |   |   |   +-- DeskillzSocialGameManager.h    # Session management
+|   |   |   |   +-- DeskillzRakeCalculator.h       # Rake calculation
+|   |   |   |   +-- DeskillzBuyInManager.h         # Buy-in/rebuy/cashout
+|   |   |   |   +-- DeskillzSocialTypes.h          # Social data structures
+|   |   |   +-- Spectator/                         # NEW in v2.6 (Host-only)
+|   |   |   |   +-- DeskillzHostSpectatorManager.h # Host spectator mode
+|   |   |   |   +-- DeskillzHostSpectatorTypes.h   # Host spectator data
+|   |   |   +-- Widgets/
+|   |   |   |   +-- Rooms/
+|   |   |   |   |   +-- DeskillzRoomListWidget.h
+|   |   |   |   |   +-- DeskillzCreateRoomWidget.h
+|   |   |   |   |   +-- DeskillzJoinRoomWidget.h
+|   |   |   |   |   +-- DeskillzRoomLobbyWidget.h
+|   |   |   |   +-- Host/                          # NEW in v2.6
+|   |   |   |   |   +-- DeskillzHostDashboardWidget.h
+|   |   |   |   |   +-- DeskillzHostProfileCardWidget.h
+|   |   |   |   |   +-- DeskillzHostTierProgressWidget.h
+|   |   |   |   |   +-- DeskillzHostBadgeGridWidget.h
+|   |   |   |   |   +-- DeskillzHostEarningsWidget.h
+|   |   |   |   +-- Social/                        # NEW in v2.6
+|   |   |   |   |   +-- DeskillzBuyInModalWidget.h
+|   |   |   |   |   +-- DeskillzRebuyModalWidget.h
+|   |   |   |   |   +-- DeskillzCashOutModalWidget.h
+|   |   |   |   |   +-- DeskillzSocialGameSettingsWidget.h
+|   |   |   |   |   +-- DeskillzTurnTimerWidget.h
+|   |   |   |   |   +-- DeskillzPauseRequestWidget.h
+|   |   |   |   +-- Spectator/                     # NEW in v2.6 (Host-only)
+|   |   |   |   |   +-- DeskillzHostSpectatorViewWidget.h
+|   |   |   |   |   +-- DeskillzHostScorePanelWidget.h
+|   |   |   |   |   +-- DeskillzHostRoomSwitcherWidget.h
+|   |   |   +-- Lobby/
+|   |   |   |   +-- DeepLinkHandler.h
+|   |   |   |   +-- DeskillzBridge.h
+|   |   |   +-- Multiplayer/
+|   |   |   |   +-- SyncManager.h
+|   |   |   +-- API/
+|   |   |       +-- DeskillzApiService.h
+|   |   |       +-- DeskillzWebSocket.h
+|   |   +-- Private/
+|   |   |   +-- Core/
+|   |   |   +-- Match/
+|   |   |   +-- Security/
+|   |   |   +-- Rooms/
+|   |   |   +-- Host/                              # NEW in v2.6
+|   |   |   |   +-- DeskillzHostManager.cpp
+|   |   |   +-- Social/                            # NEW in v2.6
+|   |   |   |   +-- DeskillzSocialGameManager.cpp
+|   |   |   |   +-- DeskillzRakeCalculator.cpp
+|   |   |   |   +-- DeskillzBuyInManager.cpp
+|   |   |   +-- Spectator/                         # NEW in v2.6 (Host-only)
+|   |   |   |   +-- DeskillzHostSpectatorManager.cpp
+|   |   |   +-- Widgets/
+|   |   |   |   +-- Host/                          # NEW in v2.6
+|   |   |   |   |   +-- DeskillzHostDashboardWidget.cpp
+|   |   |   |   |   +-- DeskillzHostProfileCardWidget.cpp
+|   |   |   |   |   +-- DeskillzHostTierProgressWidget.cpp
+|   |   |   |   |   +-- DeskillzHostBadgeGridWidget.cpp
+|   |   |   |   |   +-- DeskillzHostEarningsWidget.cpp
+|   |   |   |   +-- Social/                        # NEW in v2.6
+|   |   |   |   |   +-- DeskillzBuyInModalWidget.cpp
+|   |   |   |   |   +-- DeskillzRebuyModalWidget.cpp
+|   |   |   |   |   +-- DeskillzCashOutModalWidget.cpp
+|   |   |   |   |   +-- DeskillzSocialGameSettingsWidget.cpp
+|   |   |   |   |   +-- DeskillzTurnTimerWidget.cpp
+|   |   |   |   |   +-- DeskillzPauseRequestWidget.cpp
+|   |   |   |   +-- Spectator/                     # NEW in v2.6 (Host-only)
+|   |   |   |   |   +-- DeskillzHostSpectatorViewWidget.cpp
+|   |   |   |   |   +-- DeskillzHostScorePanelWidget.cpp
+|   |   |   |   |   +-- DeskillzHostRoomSwitcherWidget.cpp
++-- Content/
+|   +-- Widgets/
+|   +-- Materials/
++-- Resources/
++-- Docs/
++-- Deskillz.uplugin
++-- README.md
 ```
+
+---
 
 ## iOS Setup
 
@@ -876,9 +876,11 @@ Add URL scheme to `Info.plist`:
 </array>
 ```
 
+In Unreal, add to **Project Settings -> iOS -> Additional Plist Data**.
+
 ## Android Setup
 
-Add to `AndroidManifest.xml`:
+Add to your project's `AndroidManifest.xml` template:
 
 ```xml
 <activity android:name="com.epicgames.ue4.GameActivity"
@@ -895,34 +897,64 @@ Add to `AndroidManifest.xml`:
 
 **Important:** Use `android:launchMode="singleTask"` to ensure deep links are handled by the existing app instance.
 
+## Blueprint Integration
+
+All SDK features are exposed to Blueprints:
+
+```
+// Blueprint nodes available:
+- Initialize Deskillz
+- Submit Score
+- End Match
+- Create Room
+- Join Room By Code
+- Get Public Rooms
+- Initialize Host Manager
+- Register As Host
+- Create Host Room
+- Start Social Session
+- Add Player
+- Process Buy In
+- Calculate Rake
+- Spectate Host Room
+- Switch Host Room
+- Check For Updates
+- Simulate Deep Link
+```
+
 ## Test Mode
 
 Test your integration without real currency:
 
 ```cpp
-// Enable sandbox mode in config
-Config.Environment = EDeskillzEnvironment::Sandbox;
+// Enable test mode in DeskillzConfig
+// Or programmatically:
+UDeskillzSDK::SetTestMode(true);
 
 // Start a test match
-UDeskillzSDK::Get()->StartTestMatch(EMatchMode::Asynchronous);
+UDeskillzSDK::StartTestMatch(EDeskillzMatchMode::Asynchronous);
 
 // Simulate opponent score
-UDeskillzSDK::Get()->SimulateOpponentScore(1000);
+UDeskillzSDK::SimulateOpponentScore(1000);
 
-// Test navigation deep links (NEW)
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://wallet"));
+// Test navigation deep links
+UDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
+UDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://wallet"));
 
 // Test match launch
-UDeskillzDeepLinkHandler::Get()->SimulateDeepLink(
+UDeepLinkHandler::Get()->SimulateDeepLink(
     TEXT("deskillz://launch?matchId=test&token=test"));
 
-// Test room UI (NEW in v2.2)
-UDeskillzPrivateRoomUI* RoomUI = UDeskillzPrivateRoomUI::GetOrCreate(this);
-RoomUI->ShowRoomList();
-RoomUI->ShowCreateRoom();
+// Test host system (NEW in v2.6)
+UDeskillzHostManager::Get()->Initialize(TEXT("test-host-id"));
 
-// Test auto-updater (NEW in v2.3)
+// Test social games (NEW in v2.6)
+UDeskillzSocialGameManager::Get()->StartTestSession();
+
+// Test host spectator mode (NEW in v2.6) - Host-only feature
+UDeskillzHostSpectatorManager::Get()->FetchHostRooms(FDeskillzHostRoomFilter());
+
+// Test auto-updater
 UDeskillzUpdater::Get()->CheckForUpdates();
 ```
 
@@ -930,34 +962,62 @@ UDeskillzUpdater::Get()->CheckForUpdates();
 
 - [Quick Start Guide](https://docs.deskillz.games/unreal/quickstart)
 - [API Reference](https://docs.deskillz.games/unreal/api)
+- [Blueprint Guide](https://docs.deskillz.games/unreal/blueprints)
 - [Multiplayer Guide](https://docs.deskillz.games/unreal/multiplayer)
 - [Deep Link Integration](https://docs.deskillz.games/unreal/deep-links)
 - [Private Rooms Guide](https://docs.deskillz.games/unreal/private-rooms)
+- [Host System Guide](https://docs.deskillz.games/unreal/host-system)
+- [Social Games Guide](https://docs.deskillz.games/unreal/social-games)
+- [Host Spectator Mode Guide](https://docs.deskillz.games/unreal/host-spectator)
 - [Auto-Updater Guide](https://docs.deskillz.games/unreal/updater)
-- [Blueprint Integration](https://docs.deskillz.games/unreal/blueprints)
+- [Widget Customization](https://docs.deskillz.games/unreal/widgets)
 - [Troubleshooting](https://docs.deskillz.games/unreal/troubleshooting)
 
 ## Sample Project
 
 Check out our sample game implementation:
-[Deskillz Unreal Sample](https://github.com/deskillz/unreal-sample)
+[Deskillz Unreal Sample](https://github.com/Deskillz-Games-Development/unreal-sample)
 
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history.
+
+### v2.6.0 (January 2025)
+- **NEW:** Host System with 6-tier progression
+- **NEW:** DeskillzHostManager for host registration and management
+- **NEW:** Host Dashboard UI widgets (5 headers + 5 implementations)
+- **NEW:** DeskillzSocialGameManager for rake-based games
+- **NEW:** DeskillzRakeCalculator with tiered rake structure
+- **NEW:** DeskillzBuyInManager for buy-in/rebuy/cashout flows
+- **NEW:** Social Game UI widgets (6 headers + 6 implementations)
+- **NEW:** DeskillzHostSpectatorManager for host room monitoring (host-only)
+- **NEW:** Host Spectator UI widgets (3 headers + 3 implementations)
+- **NEW:** 44 total new files for Private Room Enhancement
+- Revenue sharing system (50%-75% based on tier)
+- Real-time WebSocket updates for host spectator mode
+- Pause/resume functionality for social games
+- Full Blueprint support for all new features
+
+### v2.5.1 (January 2025)
+- Fixed duplicate struct definitions
+- README URL corrections
+
+### v2.5.0 (January 2025)
+- Enhanced README documentation
+- SDK testing procedures
+- APK hosting improvements
 
 ### v2.3.0 (January 2025)
 - **NEW:** Auto-Updater (`UDeskillzUpdater`)
 - **NEW:** Forced vs optional update support
 - **NEW:** Remember skipped versions
 - **NEW:** Version comparison utilities
-- **NEW:** Blueprint-compatible update events
-- **NEW:** File size formatting helper
+- **NEW:** Update delegates and callbacks
 - APK hosting integration with Cloudflare R2
 
 ### v2.2.0 (December 2024)
 - **NEW:** Private Rooms API (`UDeskillzRooms`)
-- **NEW:** Pre-built Room UI (12 widget files - 6 headers, 6 implementations)
+- **NEW:** Pre-built Room Widgets (4 components)
 - **NEW:** Real-time WebSocket for rooms
 - **NEW:** Room events (join, leave, ready, chat, countdown)
 - Room list with search, filter, and sort
@@ -985,36 +1045,48 @@ See [CHANGELOG.md](./CHANGELOG.md) for version history.
 4. Enable logging to see incoming deep links
 
 ### Navigation events not firing
-1. Ensure `UDeskillzDeepLinkHandler::Get()->Initialize()` is called
-2. Verify event subscriptions before processing
-3. Check for pending deep links with `HasPendingDeepLink()`
+1. Ensure `UDeepLinkHandler::Get()->Initialize()` is called first
+2. Verify delegate bindings before processing
+3. Check `HasPendingDeepLink()` and call `ProcessPendingDeepLinks()`
 4. Test with `SimulateDeepLink()` first
 
-### Room UI not showing
-1. Ensure `UDeskillzRooms::Get(this)` returns valid subsystem
+### Room widgets not displaying
+1. Ensure `UDeskillzRooms::Get()->Initialize()` is called
 2. Check that widget classes are properly loaded
 3. Verify WebSocket connection is established
-4. Test with `RoomUI->ShowRoomList()`
+4. Check UMG widget hierarchy
 
 ### Auto-updater not checking
-1. Verify `SetCurrentVersion()` was called with correct values
+1. Verify version and version code are set correctly
 2. Check network connectivity
-3. Ensure Game ID is configured in Project Settings
+3. Ensure Game ID is configured in DeskillzConfig
 4. Enable logging to see API responses
 5. Test manually: `UDeskillzUpdater::Get()->CheckForUpdates()`
 
-### Module Not Found
-Ensure `"Deskillz"` is in your `Build.cs` PublicDependencyModuleNames.
+### Host system not initializing
+1. Ensure user is authenticated first
+2. Call `UDeskillzHostManager::Get()->Initialize(UserId)`
+3. Check for registration errors in delegates
+4. Verify API connectivity
 
-### Blueprint Nodes Missing
-Restart the editor after enabling the plugin.
+### Social game session errors
+1. Validate session config before starting
+2. Check buy-in amounts are within range
+3. Ensure all players have sufficient balance
+4. Monitor WebSocket connection status
+
+### Spectator mode not connecting
+1. Verify room exists and is active
+2. Check spectating is enabled for the room
+3. Ensure WebSocket connection is established
+4. Monitor for connection timeout errors
 
 ### SDK Not Initializing
 ```cpp
 // Check initialization status
-if (!UDeskillzSDK::Get()->IsInitialized())
+if (!UDeskillzSDK::IsInitialized())
 {
-    // Verify credentials in config
+    // Verify credentials in DeskillzConfig
     // Check network connectivity
     // Enable logging for details
 }
@@ -1027,7 +1099,7 @@ if (!UDeskillzSDK::Get()->IsInitialized())
 
 ### Android build errors
 - Check Min SDK is 21+
-- Verify Gradle version compatibility
+- Verify NDK version compatibility
 - Check for duplicate AndroidManifest entries
 
 ## Support
@@ -1036,13 +1108,16 @@ if (!UDeskillzSDK::Get()->IsInitialized())
 - **Discord:** [discord.gg/deskillz](https://discord.gg/deskillz)
 - **Documentation:** [docs.deskillz.games](https://docs.deskillz.games)
 - **Developer Portal:** [deskillz.games/developer](https://deskillz.games/developer)
+- **GitHub Issues:** [github.com/Deskillz-Games-Development/unreal-sdk/issues](https://github.com/Deskillz-Games-Development/unreal-sdk/issues)
 
 ## License
 
-Copyright © 2025 Deskillz.Games. All rights reserved.
+Copyright (c) 2025 Deskillz.Games. All rights reserved.
+
+MIT License - see [LICENSE](https://github.com/Deskillz-Games-Development/unreal-sdk/blob/main/LICENSE) for details.
 
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://deskillz.games">Deskillz.Games</a>
+  Made with love by <a href="https://deskillz.games">Deskillz.Games</a>
 </p>
