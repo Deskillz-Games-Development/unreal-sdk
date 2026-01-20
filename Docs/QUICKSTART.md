@@ -4,16 +4,119 @@
 
 ## Table of Contents
 
+0. [Get Your Game Credentials](#0-get-your-game-credentials) - NEW! Start Here
 1. [Prerequisites](#1-prerequisites)
 2. [Installation](#2-installation)
 3. [Basic Setup](#3-basic-setup)
 4. [Handle Match Launch](#4-handle-match-launch)
 5. [Submit Score](#5-submit-score)
-6. [Enable Auto-Updates](#6-enable-auto-updates)
-7. [Host Registration Quick Start](#7-host-registration-quick-start) - NEW
-8. [Social Game Quick Start](#8-social-game-quick-start) - NEW
-9. [Host Spectator Mode Quick Start](#9-host-spectator-mode-quick-start) - NEW
-10. [Test Your Integration](#10-test-your-integration)
+6. [Return to Main App](#6-return-to-main-app)
+7. [Enable Auto-Updates](#7-enable-auto-updates)
+8. [Host Registration Quick Start](#8-host-registration-quick-start)
+9. [Social Game Quick Start](#9-social-game-quick-start)
+10. [Host Spectator Mode Quick Start](#10-host-spectator-mode-quick-start)
+11. [Test Your Integration](#11-test-your-integration)
+
+---
+
+## 0. Get Your Game Credentials
+
+**IMPORTANT: Start here!** Before writing any code, you need your Game ID and API credentials.
+
+### Why Credentials First?
+
+The Deskillz SDK requires a Game ID to initialize. With our **Credentials-First Flow**, you can get your credentials immediately and start building - no need to complete the full registration form first.
+
+### Step 1: Access Developer Portal
+
+1. Go to [deskillz.games/developer](https://deskillz.games/developer)
+2. Connect your wallet or create an account
+3. Click **"Register New Game"**
+
+### Step 2: Generate Credentials Instantly
+
+1. Enter your **Game Name** (e.g., "Block Puzzle Master")
+2. Select your **Target Platform** (Android / iOS / Both)
+3. Click **"Generate Game ID & API Key"**
+
+You will immediately receive:
+
+| Credential | Example | Purpose |
+|------------|---------|---------|
+| **Game ID** | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | Unique identifier for your game |
+| **API Key** | `dsk_live_abc123def456ghi789...` | Public key for SDK authentication |
+| **API Secret** | `dss_xyz789abc456def123...` | Private key for HMAC signing |
+| **Deep Link Scheme** | `deskillz-blockpuzzlemaster` | Custom URL scheme for app launching |
+
+### Step 3: Save Your API Secret Immediately!
+
+**WARNING:** Your API Secret is displayed **only once**! 
+
+- Copy it immediately and store it securely
+- Never commit it to source control
+- You cannot retrieve it later - you would need to regenerate (invalidating the old one)
+
+### Step 4: Configure Your Project
+
+**Unity - Store in a ScriptableObject or config file:**
+
+```csharp
+// Create: Assets/Resources/DeskillzConfig.asset
+// Add to .gitignore to keep credentials out of source control
+
+[CreateAssetMenu(fileName = "DeskillzConfig", menuName = "Deskillz/Config")]
+public class DeskillzConfig : ScriptableObject
+{
+    public string GameId = "YOUR_GAME_ID";
+    public string ApiKey = "YOUR_API_KEY";
+    public string ApiSecret = "YOUR_API_SECRET"; // Keep secure!
+    public string DeepLinkScheme = "deskillz-yourgame";
+    public bool UseSandbox = true;
+}
+```
+
+**Unreal - Store in a Data Asset:**
+
+```cpp
+// Create: Content/Config/DeskillzConfig.uasset
+// Add Config/ folder to .gitignore
+
+UCLASS()
+class UDeskillzConfigAsset : public UDataAsset
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY(EditAnywhere)
+    FString GameId = TEXT("YOUR_GAME_ID");
+    
+    UPROPERTY(EditAnywhere)
+    FString ApiKey = TEXT("YOUR_API_KEY");
+    
+    UPROPERTY(EditAnywhere)
+    FString ApiSecret = TEXT("YOUR_API_SECRET"); // Keep secure!
+    
+    UPROPERTY(EditAnywhere)
+    FString DeepLinkScheme = TEXT("deskillz-yourgame");
+    
+    UPROPERTY(EditAnywhere)
+    bool bUseSandbox = true;
+};
+```
+
+### Step 5: Complete Registration (When Ready)
+
+After verifying your SDK integration works:
+
+1. Return to Developer Portal > My Games > [Your Draft Game]
+2. Complete the remaining form sections:
+   - Game description and category
+   - Tournament configuration
+   - Monetization settings
+   - Screenshots, icon, and video
+   - Upload your APK/IPA build
+3. Submit for review
+
+**Your game stays in DRAFT status until you submit the full form.**
 
 ---
 
@@ -21,10 +124,10 @@
 
 Before you begin, ensure you have:
 
-- [x] A Deskillz Developer Account ([Sign up here](https://developer.deskillz.games))
-- [x] Your Game ID and API Key from the Developer Portal
+- [x] **Game Credentials** from Step 0 above (Game ID, API Key, API Secret)
 - [x] Unity 2020.3+ or Unreal Engine 4.27+
 - [x] Basic knowledge of C# (Unity) or C++ (Unreal)
+- [x] Android SDK / Xcode for mobile builds
 
 ---
 
@@ -69,27 +172,36 @@ using Deskillz.Lobby;
 
 public class DeskillzManager : MonoBehaviour
 {
-    // Your credentials from Developer Portal
-    [SerializeField] private string gameId = "your-game-id";
-    [SerializeField] private string apiKey = "your-api-key";
+    // Load credentials from config asset (see Step 0)
+    [SerializeField] private DeskillzConfig config;
     
     void Awake()
     {
         // Ensure only one instance
         DontDestroyOnLoad(gameObject);
         
-        // Configure SDK
-        var config = new DeskillzConfig
+        // Validate credentials
+        if (string.IsNullOrEmpty(config.GameId) || string.IsNullOrEmpty(config.ApiKey))
         {
-            GameId = gameId,
-            ApiKey = apiKey,
-            Environment = DeskillzEnvironment.Sandbox, // Use Production when ready
+            Debug.LogError("Missing Deskillz credentials! See QUICKSTART Step 0.");
+            return;
+        }
+        
+        // Configure SDK
+        var sdkConfig = new DeskillzSDKConfig
+        {
+            GameId = config.GameId,
+            ApiKey = config.ApiKey,
+            Environment = config.UseSandbox 
+                ? DeskillzEnvironment.Sandbox 
+                : DeskillzEnvironment.Production,
             EnableLogging = true
         };
         
         // Initialize
-        DeskillzSDK.Instance.Initialize(config);
+        DeskillzSDK.Instance.Initialize(sdkConfig);
         DeskillzSDK.Instance.OnInitialized += OnSDKReady;
+        DeskillzSDK.Instance.OnError += OnSDKError;
     }
     
     void OnSDKReady()
@@ -100,11 +212,19 @@ public class DeskillzManager : MonoBehaviour
         DeepLinkHandler.Instance.Initialize();
         DeepLinkHandler.Instance.OnMatchReady += OnMatchReady;
         
-        // Check for pending launch
+        // Check for pending launch (cold start from deep link)
         if (DeepLinkHandler.Instance.HasPendingLaunch())
         {
             DeepLinkHandler.Instance.ProcessPendingLaunch();
         }
+        
+        // Check for updates
+        DeskillzUpdater.Instance.CheckForUpdates();
+    }
+    
+    void OnSDKError(DeskillzError error)
+    {
+        Debug.LogError($"SDK Error: {error.Code} - {error.Message}");
     }
     
     void OnMatchReady(MatchLaunchData data)
@@ -143,6 +263,9 @@ private:
     void OnSDKReady();
     
     UFUNCTION()
+    void OnSDKError(const FDeskillzError& Error);
+    
+    UFUNCTION()
     void OnMatchReady(const FMatchLaunchData& Data);
 };
 
@@ -153,14 +276,27 @@ void AMyGameMode::BeginPlay()
 {
     Super::BeginPlay();
     
-    FDeskillzConfig Config;
-    Config.GameId = TEXT("your-game-id");
-    Config.ApiKey = TEXT("your-api-key");
-    Config.Environment = EDeskillzEnvironment::Sandbox;
-    Config.bEnableLogging = true;
+    // Load config from Data Asset (see Step 0)
+    UDeskillzConfigAsset* Config = LoadObject<UDeskillzConfigAsset>(
+        nullptr, TEXT("/Game/Config/DeskillzConfig.DeskillzConfig"));
     
-    UDeskillzSDK::Get()->Initialize(Config);
+    if (!Config || Config->GameId.IsEmpty())
+    {
+        UE_LOG(LogTemp, Error, TEXT("Missing Deskillz credentials! See QUICKSTART Step 0."));
+        return;
+    }
+    
+    FDeskillzConfig SDKConfig;
+    SDKConfig.GameId = Config->GameId;
+    SDKConfig.ApiKey = Config->ApiKey;
+    SDKConfig.Environment = Config->bUseSandbox 
+        ? EDeskillzEnvironment::Sandbox 
+        : EDeskillzEnvironment::Production;
+    SDKConfig.bEnableLogging = true;
+    
+    UDeskillzSDK::Get()->Initialize(SDKConfig);
     UDeskillzSDK::Get()->OnInitialized.AddDynamic(this, &AMyGameMode::OnSDKReady);
+    UDeskillzSDK::Get()->OnError.AddDynamic(this, &AMyGameMode::OnSDKError);
 }
 
 void AMyGameMode::OnSDKReady()
@@ -174,6 +310,14 @@ void AMyGameMode::OnSDKReady()
     {
         UDeepLinkHandler::Get()->ProcessPendingLaunch();
     }
+    
+    // Check for updates
+    UDeskillzUpdater::Get()->CheckForUpdates();
+}
+
+void AMyGameMode::OnSDKError(const FDeskillzError& Error)
+{
+    UE_LOG(LogTemp, Error, TEXT("SDK Error: %s - %s"), *Error.Code, *Error.Message);
 }
 
 void AMyGameMode::OnMatchReady(const FMatchLaunchData& Data)
@@ -209,21 +353,33 @@ public class GameController : MonoBehaviour
         {
             StartMatch();
         }
+        else
+        {
+            Debug.LogError("No match data! Game should be launched from Deskillz app.");
+        }
     }
     
     void StartMatch()
     {
         startTime = Time.time;
         
-        // Use the random seed for fair play
+        // Use the random seed for fair play (both players get same seed)
         UnityEngine.Random.InitState(matchData.RandomSeed);
         
-        // Show opponent info
-        Debug.Log($"Playing against: {matchData.Opponents[0].Username}");
+        // Show opponent info (optional)
+        if (matchData.Opponents != null && matchData.Opponents.Length > 0)
+        {
+            Debug.Log($"Playing against: {matchData.Opponents[0].Username}");
+        }
         Debug.Log($"Entry fee: {matchData.EntryFee} {matchData.Currency}");
         
         // Start your game logic
         BeginGameplay();
+    }
+    
+    void BeginGameplay()
+    {
+        // Your game logic here
     }
 }
 ```
@@ -241,6 +397,10 @@ void AGameController::BeginPlay()
     {
         StartMatch(GI->CurrentMatch);
     }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("No match data! Game should be launched from Deskillz app."));
+    }
 }
 
 void AGameController::StartMatch(const FMatchLaunchData& Data)
@@ -248,8 +408,14 @@ void AGameController::StartMatch(const FMatchLaunchData& Data)
     MatchData = Data;
     StartTime = GetWorld()->GetTimeSeconds();
     
-    // Use random seed
+    // Use random seed for fair play
     FMath::RandInit(Data.RandomSeed);
+    
+    // Log opponent info
+    if (Data.Opponents.Num() > 0)
+    {
+        UE_LOG(LogTemp, Log, TEXT("Playing against: %s"), *Data.Opponents[0].Username);
+    }
     
     // Start gameplay
     BeginGameplay();
@@ -260,33 +426,79 @@ void AGameController::StartMatch(const FMatchLaunchData& Data)
 
 ## 5. Submit Score
 
-When the match ends, submit the score securely.
+When the match ends, submit the score securely using HMAC signing.
 
 ### Unity
 
 ```csharp
 using Deskillz;
-using Deskillz.Lobby;
+using Deskillz.Security;
+using System;
+using System.Security.Cryptography;
+using System.Text;
 
 public class GameController : MonoBehaviour
 {
+    [SerializeField] private DeskillzConfig config; // Contains ApiSecret
+    
     public void OnGameOver(int finalScore)
     {
         float duration = Time.time - startTime;
+        long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        string nonce = Guid.NewGuid().ToString("N");
         
-        // Submit score and return to main app
-        DeskillzBridge.Instance.SubmitScore(finalScore, result =>
+        // Generate HMAC hash for security
+        string hash = GenerateScoreHash(
+            matchData.MatchId, 
+            finalScore, 
+            (int)duration, 
+            timestamp, 
+            nonce
+        );
+        
+        var scoreData = new ScoreSubmissionData
+        {
+            MatchId = matchData.MatchId,
+            Score = finalScore,
+            Duration = (int)duration,
+            Timestamp = timestamp,
+            Nonce = nonce,
+            Hash = hash
+        };
+        
+        // Submit score
+        DeskillzAPI.SubmitScore(scoreData, result =>
         {
             if (result.Success)
             {
-                Debug.Log("Score submitted!");
-                DeskillzBridge.Instance.ReturnToMainApp("results");
+                Debug.Log("Score submitted successfully!");
+                ReturnToMainApp();
             }
             else
             {
-                Debug.LogError($"Failed: {result.Error}");
+                Debug.LogError($"Score submission failed: {result.Error}");
+                // Still return to main app with error
+                ReturnToMainApp(result.Error);
             }
         });
+    }
+    
+    private string GenerateScoreHash(string matchId, int score, int duration, long timestamp, string nonce)
+    {
+        // Format: matchId:score:duration:timestamp:nonce
+        string data = $"{matchId}:{score}:{duration}:{timestamp}:{nonce}";
+        
+        using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(config.ApiSecret)))
+        {
+            byte[] hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+            return Convert.ToBase64String(hashBytes);
+        }
+    }
+    
+    private void ReturnToMainApp(string error = null)
+    {
+        string destination = string.IsNullOrEmpty(error) ? "results" : "error";
+        DeskillzSDK.Instance.ReturnToMainApp(matchData.MatchId, destination);
     }
 }
 ```
@@ -294,59 +506,99 @@ public class GameController : MonoBehaviour
 ### Unreal
 
 ```cpp
+#include "DeskillzAPI.h"
+#include "Misc/SecureHash.h"
+
 void AGameController::OnGameOver(int32 FinalScore)
 {
     float Duration = GetWorld()->GetTimeSeconds() - StartTime;
+    int64 Timestamp = FDateTime::UtcNow().ToUnixTimestamp();
+    FString Nonce = FGuid::NewGuid().ToString(EGuidFormats::DigitsLower);
     
-    UDeskillzBridge::Get()->SubmitScore(FinalScore,
-        FOnScoreSubmitted::CreateLambda([](const FScoreSubmitResult& Result) {
+    // Generate HMAC hash
+    FString Hash = GenerateScoreHash(MatchData.MatchId, FinalScore, (int32)Duration, Timestamp, Nonce);
+    
+    FScoreSubmissionData ScoreData;
+    ScoreData.MatchId = MatchData.MatchId;
+    ScoreData.Score = FinalScore;
+    ScoreData.Duration = (int32)Duration;
+    ScoreData.Timestamp = Timestamp;
+    ScoreData.Nonce = Nonce;
+    ScoreData.Hash = Hash;
+    
+    UDeskillzAPI::Get()->SubmitScore(ScoreData,
+        FOnScoreSubmitted::CreateLambda([this](const FScoreResult& Result) {
             if (Result.bSuccess)
             {
                 UE_LOG(LogTemp, Log, TEXT("Score submitted!"));
-                UDeskillzBridge::Get()->ReturnToMainApp(TEXT("results"));
+                ReturnToMainApp();
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("Submission failed: %s"), *Result.Error);
+                ReturnToMainApp(Result.Error);
             }
         })
     );
 }
+
+FString AGameController::GenerateScoreHash(const FString& MatchId, int32 Score, int32 Duration, int64 Timestamp, const FString& Nonce)
+{
+    // Format: matchId:score:duration:timestamp:nonce
+    FString Data = FString::Printf(TEXT("%s:%d:%d:%lld:%s"), *MatchId, Score, Duration, Timestamp, *Nonce);
+    
+    // Get API Secret from config
+    UDeskillzConfigAsset* Config = LoadObject<UDeskillzConfigAsset>(
+        nullptr, TEXT("/Game/Config/DeskillzConfig.DeskillzConfig"));
+    
+    // Generate HMAC-SHA256
+    TArray<uint8> DataBytes;
+    FTCHARToUTF8 DataConverter(*Data);
+    DataBytes.Append((uint8*)DataConverter.Get(), DataConverter.Length());
+    
+    TArray<uint8> KeyBytes;
+    FTCHARToUTF8 KeyConverter(*Config->ApiSecret);
+    KeyBytes.Append((uint8*)KeyConverter.Get(), KeyConverter.Length());
+    
+    TArray<uint8> HashBytes;
+    FSHA256Signature::HMACSHA256(DataBytes, KeyBytes, HashBytes);
+    
+    return FBase64::Encode(HashBytes);
+}
 ```
 
 ---
 
-## 6. Enable Auto-Updates
+## 6. Return to Main App
 
-Keep players on the latest version with automatic update checks.
+Always return the player to the Deskillz main app after the match ends.
 
 ### Unity
 
 ```csharp
 using Deskillz;
 
-public class UpdateChecker : MonoBehaviour
+public class AppNavigator : MonoBehaviour
 {
-    void Start()
+    public static void ReturnToMainApp(string matchId, string destination = "results")
     {
-        DeskillzUpdater.Instance.OnForcedUpdateRequired += HandleForcedUpdate;
-        DeskillzUpdater.Instance.OnUpdateAvailable += HandleOptionalUpdate;
+        // Build deep link URL
+        string url = $"deskillz://{destination}?matchId={matchId}";
         
-        // Check on startup
-        DeskillzUpdater.Instance.CheckForUpdates();
-    }
-    
-    void HandleForcedUpdate(UpdateInfo info)
-    {
-        // Must update - block gameplay
-        ShowBlockingUpdateDialog(info);
-    }
-    
-    void HandleOptionalUpdate(UpdateInfo info)
-    {
-        // Optional - show dismissable dialog
-        ShowOptionalUpdateDialog(info);
-    }
-    
-    public void OpenUpdateLink()
-    {
-        DeskillzUpdater.Instance.OpenUpdateUrl();
+        #if UNITY_ANDROID
+        using (var intent = new AndroidJavaObject("android.content.Intent", 
+            "android.intent.action.VIEW", 
+            new AndroidJavaClass("android.net.Uri").CallStatic<AndroidJavaObject>("parse", url)))
+        {
+            using (var activity = new AndroidJavaClass("com.unity3d.player.UnityPlayer")
+                .GetStatic<AndroidJavaObject>("currentActivity"))
+            {
+                activity.Call("startActivity", intent);
+            }
+        }
+        #elif UNITY_IOS
+        Application.OpenURL(url);
+        #endif
     }
 }
 ```
@@ -354,32 +606,111 @@ public class UpdateChecker : MonoBehaviour
 ### Unreal
 
 ```cpp
-void AUpdateChecker::BeginPlay()
+void UDeskillzAppNavigator::ReturnToMainApp(const FString& MatchId, const FString& Destination)
 {
-    Super::BeginPlay();
+    FString URL = FString::Printf(TEXT("deskillz://%s?matchId=%s"), *Destination, *MatchId);
     
-    UDeskillzUpdater::Get()->OnForcedUpdateRequired.AddDynamic(this, &AUpdateChecker::HandleForcedUpdate);
-    UDeskillzUpdater::Get()->OnUpdateAvailable.AddDynamic(this, &AUpdateChecker::HandleOptionalUpdate);
-    
-    UDeskillzUpdater::Get()->CheckForUpdates();
-}
-
-void AUpdateChecker::HandleForcedUpdate(const FUpdateInfo& Info)
-{
-    ShowBlockingUpdateDialog(Info);
-}
-
-void AUpdateChecker::HandleOptionalUpdate(const FUpdateInfo& Info)
-{
-    ShowOptionalUpdateDialog(Info);
+    #if PLATFORM_ANDROID
+    FPlatformProcess::LaunchURL(*URL, nullptr, nullptr);
+    #elif PLATFORM_IOS
+    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:URL.GetNSString()]
+                                       options:@{} 
+                             completionHandler:nil];
+    #endif
 }
 ```
 
 ---
 
-## 7. Host Registration Quick Start
+## 7. Enable Auto-Updates
 
-Allow players to become hosts and earn revenue from rooms they create.
+Ensure players always have the latest version of your game.
+
+### Unity
+
+```csharp
+using Deskillz.Updater;
+
+public class AppInitializer : MonoBehaviour
+{
+    void Start()
+    {
+        // Set current version
+        DeskillzUpdater.Instance.CurrentVersion = Application.version;
+        DeskillzUpdater.Instance.CurrentVersionCode = GetVersionCode();
+        
+        // Subscribe to update events
+        DeskillzUpdater.Instance.OnUpdateAvailable += HandleUpdateAvailable;
+        DeskillzUpdater.Instance.OnForceUpdateRequired += HandleForceUpdate;
+        
+        // Check for updates
+        DeskillzUpdater.Instance.CheckForUpdates();
+    }
+    
+    void HandleUpdateAvailable(UpdateInfo info)
+    {
+        // Optional update - show dialog
+        DeskillzUpdaterUI.Instance.ShowUpdateDialog(info);
+    }
+    
+    void HandleForceUpdate(UpdateInfo info)
+    {
+        // Required update - must update to continue
+        DeskillzUpdaterUI.Instance.ShowForceUpdateDialog(info);
+    }
+    
+    private int GetVersionCode()
+    {
+        #if UNITY_ANDROID
+        using (var version = new AndroidJavaClass("com.unity3d.player.UnityPlayer")
+            .GetStatic<AndroidJavaObject>("currentActivity")
+            .Call<AndroidJavaObject>("getPackageManager")
+            .Call<AndroidJavaObject>("getPackageInfo", Application.identifier, 0))
+        {
+            return version.Get<int>("versionCode");
+        }
+        #else
+        return int.Parse(Application.version.Replace(".", ""));
+        #endif
+    }
+}
+```
+
+### Unreal
+
+```cpp
+#include "Updater/DeskillzUpdater.h"
+
+void AMyGameMode::InitializeUpdater()
+{
+    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
+    
+    Updater->SetCurrentVersion(GetGameVersion(), GetVersionCode());
+    
+    Updater->OnUpdateAvailable.AddDynamic(this, &AMyGameMode::HandleUpdateAvailable);
+    Updater->OnForceUpdateRequired.AddDynamic(this, &AMyGameMode::HandleForceUpdate);
+    
+    Updater->CheckForUpdates();
+}
+
+void AMyGameMode::HandleUpdateAvailable(const FUpdateInfo& Info)
+{
+    // Show optional update dialog
+    UDeskillzUpdaterUI::Get()->ShowUpdateDialog(Info);
+}
+
+void AMyGameMode::HandleForceUpdate(const FUpdateInfo& Info)
+{
+    // Show mandatory update dialog (blocks gameplay)
+    UDeskillzUpdaterUI::Get()->ShowForceUpdateDialog(Info);
+}
+```
+
+---
+
+## 8. Host Registration Quick Start
+
+Enable players to become hosts and create private rooms.
 
 ### Unity
 
@@ -390,80 +721,28 @@ public class HostQuickStart : MonoBehaviour
 {
     void Start()
     {
-        // Initialize host manager
-        HostManager.Instance.Initialize(currentUserId);
+        // Initialize host system
+        HostManager.Instance.Initialize();
         
-        // Subscribe to key events
-        HostManager.Instance.OnTierChanged += (old, newTier) => 
-            Debug.Log($"Tier upgraded to {newTier}!");
-        HostManager.Instance.OnEarningsUpdated += (total, pending) =>
-            Debug.Log($"Earnings: ${total} (${pending} pending)");
+        // Check if user is already a host
+        if (HostManager.Instance.IsHost)
+        {
+            Debug.Log($"Host Level: {HostManager.Instance.HostLevel}");
+        }
     }
     
-    public void BecomeHost()
+    public void RegisterAsHost()
     {
-        // Register as host
         HostManager.Instance.RegisterAsHost(
-            profile => {
-                Debug.Log($"Now a {profile.TierName} host!");
-                Debug.Log($"Revenue share: {GetRevenueShare(profile.Tier)}%");
+            success => {
+                if (success)
+                {
+                    Debug.Log("Now a host!");
+                    HostDashboardUI.Instance.Show();
+                }
             },
             error => Debug.LogError(error)
         );
-    }
-    
-    public void CreateHostRoom()
-    {
-        var config = new CreateHostRoomConfig
-        {
-            Name = "My First Room",
-            GameCategory = GameCategory.Social,
-            PointValue = 0.01m,        // $0.01 per point
-            MinBuyIn = 10.0m,
-            MaxBuyIn = 100.0m,
-            DefaultBuyIn = 20.0m,
-            RakePercentage = 5.0m,     // 5% rake
-            RakeCap = 2.0m,            // Max $2 per pot
-            EntryCurrency = "USDT",
-            MaxPlayers = 6,
-            Mode = RoomMode.Sync,
-            AllowSpectators = true
-        };
-        
-        HostManager.Instance.CreateHostRoom(config,
-            room => Debug.Log($"Room created! Code: {room.RoomCode}"),
-            error => Debug.LogError(error)
-        );
-    }
-    
-    public void CheckEarnings()
-    {
-        float total = HostManager.Instance.GetTotalEarnings();
-        float pending = HostManager.Instance.GetPendingEarnings();
-        Debug.Log($"Total: ${total}, Available to withdraw: ${pending}");
-    }
-    
-    public void Withdraw()
-    {
-        float pending = HostManager.Instance.GetPendingEarnings();
-        HostManager.Instance.WithdrawEarnings(pending,
-            () => Debug.Log("Withdrawal initiated!"),
-            error => Debug.LogError(error)
-        );
-    }
-    
-    string GetRevenueShare(HostTier tier)
-    {
-        return tier switch
-        {
-            HostTier.Starter => "50",
-            HostTier.Bronze => "55",
-            HostTier.Silver => "60",
-            HostTier.Gold => "65",
-            HostTier.Platinum => "70",
-            HostTier.Diamond => "75",
-            _ => "50"
-        };
     }
 }
 ```
@@ -477,43 +756,24 @@ void AHostQuickStart::BeginPlay()
 {
     Super::BeginPlay();
     
-    UDeskillzHostManager::Get()->Initialize(CurrentUserId);
+    UDeskillzHostManager::Get()->Initialize();
     
-    UDeskillzHostManager::Get()->OnTierChanged.AddDynamic(this, &AHostQuickStart::HandleTierChange);
-    UDeskillzHostManager::Get()->OnEarningsUpdated.AddDynamic(this, &AHostQuickStart::HandleEarnings);
+    if (UDeskillzHostManager::Get()->IsHost())
+    {
+        UE_LOG(LogTemp, Log, TEXT("Host Level: %d"), 
+            UDeskillzHostManager::Get()->GetHostLevel());
+    }
 }
 
-void AHostQuickStart::BecomeHost()
+void AHostQuickStart::RegisterAsHost()
 {
     UDeskillzHostManager::Get()->RegisterAsHost(
-        FOnHostProfileResult::CreateLambda([](const FHostProfile& Profile) {
-            UE_LOG(LogTemp, Log, TEXT("Now a %s host!"), *Profile.TierName);
-        }),
-        FOnHostError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
-        })
-    );
-}
-
-void AHostQuickStart::CreateHostRoom()
-{
-    FCreateHostRoomConfig Config;
-    Config.Name = TEXT("My First Room");
-    Config.GameCategory = EGameCategory::Social;
-    Config.PointValue = 0.01f;
-    Config.MinBuyIn = 10.0f;
-    Config.MaxBuyIn = 100.0f;
-    Config.DefaultBuyIn = 20.0f;
-    Config.RakePercentage = 5.0f;
-    Config.RakeCap = 2.0f;
-    Config.EntryCurrency = TEXT("USDT");
-    Config.MaxPlayers = 6;
-    Config.Mode = ERoomMode::Sync;
-    Config.bAllowSpectators = true;
-    
-    UDeskillzHostManager::Get()->CreateHostRoom(Config,
-        FOnRoomCreated::CreateLambda([](const FPrivateRoom& Room) {
-            UE_LOG(LogTemp, Log, TEXT("Room created! Code: %s"), *Room.RoomCode);
+        FOnHostRegistered::CreateLambda([](bool bSuccess) {
+            if (bSuccess)
+            {
+                UE_LOG(LogTemp, Log, TEXT("Now a host!"));
+                UDeskillzHostDashboardUI::Get()->Show();
+            }
         }),
         FOnHostError::CreateLambda([](const FString& Error) {
             UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
@@ -524,9 +784,9 @@ void AHostQuickStart::CreateHostRoom()
 
 ---
 
-## 8. Social Game Quick Start
+## 9. Social Game Quick Start
 
-Implement rake-based social games with buy-in, rebuy, and cash-out flows.
+Implement social games with buy-ins, rake, and multi-round sessions.
 
 ### Unity
 
@@ -535,16 +795,15 @@ using Deskillz.Social;
 
 public class SocialGameQuickStart : MonoBehaviour
 {
+    private string roomId;
+    
     void Start()
     {
-        // Initialize managers for this room
         SocialGameManager.Instance.Initialize(roomId);
         BuyInManager.Instance.Initialize(roomId);
         
-        // Subscribe to events
         SocialGameManager.Instance.OnRoundEnded += HandleRoundEnd;
         BuyInManager.Instance.OnRebuyRequired += HandleRebuyRequired;
-        BuyInManager.Instance.OnLowBalanceWarning += HandleLowBalance;
     }
     
     public void StartSession()
@@ -565,45 +824,22 @@ public class SocialGameQuickStart : MonoBehaviour
     
     public void EndRound(string winnerId, float potAmount)
     {
-        // End round - rake is automatically calculated
         SocialGameManager.Instance.EndRound(winnerId, potAmount);
     }
     
     void HandleRoundEnd(RoundResult result)
     {
-        Debug.Log($"Round {result.RoundNumber} complete");
-        Debug.Log($"Winner: {result.WinnerId}");
-        Debug.Log($"Pot: ${result.PotAmount}");
-        Debug.Log($"Rake: ${result.RakeAmount}");
+        Debug.Log($"Round {result.RoundNumber} - Winner: {result.WinnerId}");
+        Debug.Log($"Pot: ${result.PotAmount} | Rake: ${result.RakeAmount}");
         
         // Start next round
         SocialGameManager.Instance.StartRound();
     }
     
-    void HandleRebuyRequired(string playerId, float timeout)
+    void HandleRebuyRequired(string playerId)
     {
-        Debug.Log($"{playerId} is out! {timeout}s to rebuy");
-        // Show rebuy UI
-    }
-    
-    void HandleLowBalance(string playerId, float balance, float threshold)
-    {
-        Debug.Log($"Warning: {playerId} balance (${balance}) below ${threshold}");
-    }
-    
-    public void PlayerCashOut(string playerId)
-    {
-        BuyInManager.Instance.ProcessCashOut(playerId,
-            result => Debug.Log($"{playerId} cashed out ${result.Amount}"),
-            error => Debug.LogError(error)
-        );
-    }
-    
-    public void PreviewRake(float potAmount)
-    {
-        // Show players what rake will be taken
-        float rake = RakeCalculator.CalculateRakeWithCap(potAmount, 5.0f, 3.0f);
-        Debug.Log($"Pot: ${potAmount} -> Rake: ${rake} -> Winner gets: ${potAmount - rake}");
+        // Show rebuy modal
+        RebuyModal.Instance.Show(playerId);
     }
 }
 ```
@@ -613,7 +849,6 @@ public class SocialGameQuickStart : MonoBehaviour
 ```cpp
 #include "Social/DeskillzSocialGameManager.h"
 #include "Social/DeskillzBuyInManager.h"
-#include "Social/DeskillzRakeCalculator.h"
 
 void ASocialGameQuickStart::BeginPlay()
 {
@@ -622,8 +857,10 @@ void ASocialGameQuickStart::BeginPlay()
     UDeskillzSocialGameManager::Get()->Initialize(RoomId);
     UDeskillzBuyInManager::Get()->Initialize(RoomId);
     
-    UDeskillzSocialGameManager::Get()->OnRoundEnded.AddDynamic(this, &ASocialGameQuickStart::HandleRoundEnd);
-    UDeskillzBuyInManager::Get()->OnRebuyRequired.AddDynamic(this, &ASocialGameQuickStart::HandleRebuyRequired);
+    UDeskillzSocialGameManager::Get()->OnRoundEnded.AddDynamic(
+        this, &ASocialGameQuickStart::HandleRoundEnd);
+    UDeskillzBuyInManager::Get()->OnRebuyRequired.AddDynamic(
+        this, &ASocialGameQuickStart::HandleRebuyRequired);
 }
 
 void ASocialGameQuickStart::StartSession()
@@ -660,19 +897,17 @@ void ASocialGameQuickStart::HandleRoundEnd(const FRoundResult& Result)
     UE_LOG(LogTemp, Log, TEXT("Round %d - Winner: %s, Pot: $%.2f, Rake: $%.2f"),
         Result.RoundNumber, *Result.WinnerId, Result.PotAmount, Result.RakeAmount);
     
-    // Start next round
     UDeskillzSocialGameManager::Get()->StartRound();
 }
 ```
 
 ---
 
-## 9. Host Spectator Mode Quick Start
+## 10. Host Spectator Mode Quick Start
 
 Let hosts monitor their private social rooms (host-only feature).
 
-> **Note:** Only hosts can spectate their own rooms. General public spectating is not available.
-> Hosts can see board/scores but NOT player hands (anti-cheat).
+> **Note:** Only hosts can spectate their own rooms. Hosts can see board/scores but NOT player hands (anti-cheat).
 
 ### Unity
 
@@ -683,10 +918,7 @@ public class HostSpectatorQuickStart : MonoBehaviour
 {
     void Start()
     {
-        // Host must be authenticated first
         HostSpectatorManager.Instance.Initialize();
-        
-        // Subscribe to events for YOUR rooms
         HostSpectatorManager.Instance.OnGameStateUpdated += HandleStateUpdate;
         HostSpectatorManager.Instance.OnRoundEnded += HandleRoundEnd;
     }
@@ -695,7 +927,7 @@ public class HostSpectatorQuickStart : MonoBehaviour
     {
         var filter = new HostRoomFilter
         {
-            GameCategory = GameCategory.Social, // Social rooms only
+            GameCategory = GameCategory.Social,
             Status = RoomStatus.Active,
             IsActive = true
         };
@@ -713,11 +945,9 @@ public class HostSpectatorQuickStart : MonoBehaviour
     
     public void SpectateMyRoom(string roomId)
     {
-        // Join YOUR room as spectator (see board, NOT hands)
         HostSpectatorManager.Instance.SpectateRoom(roomId,
             state => {
-                Debug.Log($"Watching your room: {state.RoomName}");
-                Debug.Log($"Round: {state.CurrentRound}");
+                Debug.Log($"Watching: {state.RoomName}");
                 // Note: Player hands NOT visible (anti-cheat)
             },
             error => Debug.LogError(error)
@@ -726,8 +956,7 @@ public class HostSpectatorQuickStart : MonoBehaviour
     
     void HandleStateUpdate(HostSpectatorState state)
     {
-        // Update board (NO hands visible)
-        Debug.Log($"Scores updated");
+        Debug.Log($"Scores updated - Round: {state.CurrentRound}");
     }
     
     void HandleRoundEnd(HostRoundResult result)
@@ -737,7 +966,6 @@ public class HostSpectatorQuickStart : MonoBehaviour
     
     public void SwitchRoom(string otherRoomId)
     {
-        // Switch between YOUR rooms (multi-room hosting)
         HostSpectatorManager.Instance.SwitchRoom(otherRoomId);
     }
     
@@ -757,7 +985,6 @@ void AHostSpectatorQuickStart::BeginPlay()
 {
     Super::BeginPlay();
     
-    // Host must be authenticated first
     UDeskillzHostSpectatorManager::Get()->Initialize();
     
     UDeskillzHostSpectatorManager::Get()->OnGameStateUpdated.AddDynamic(
@@ -769,15 +996,14 @@ void AHostSpectatorQuickStart::BeginPlay()
 void AHostSpectatorQuickStart::FetchMyRooms()
 {
     FHostRoomFilter Filter;
-    Filter.GameCategory = EGameCategory::Social; // Social only
+    Filter.GameCategory = EGameCategory::Social;
     Filter.bIsActive = true;
     
     UDeskillzHostSpectatorManager::Get()->FetchHostRooms(Filter,
         FOnHostRoomsResult::CreateLambda([](const TArray<FHostRoom>& Rooms) {
             for (const auto& Room : Rooms)
             {
-                UE_LOG(LogTemp, Log, TEXT("%s: %d players"),
-                    *Room.RoomName, Room.PlayerCount);
+                UE_LOG(LogTemp, Log, TEXT("%s: %d players"), *Room.RoomName, Room.PlayerCount);
             }
         }),
         FOnHostError::CreateLambda([](const FString& Error) {
@@ -788,10 +1014,9 @@ void AHostSpectatorQuickStart::FetchMyRooms()
 
 void AHostSpectatorQuickStart::SpectateMyRoom(const FString& RoomId)
 {
-    // Join YOUR room (see board, NOT hands)
     UDeskillzHostSpectatorManager::Get()->SpectateRoom(RoomId,
         FOnJoinedSpectator::CreateLambda([](const FHostSpectatorState& State) {
-            UE_LOG(LogTemp, Log, TEXT("Watching your room: %s"), *State.RoomName);
+            UE_LOG(LogTemp, Log, TEXT("Watching: %s"), *State.RoomName);
         }),
         FOnHostError::CreateLambda([](const FString& Error) {
             UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
@@ -801,8 +1026,7 @@ void AHostSpectatorQuickStart::SpectateMyRoom(const FString& RoomId)
 
 void AHostSpectatorQuickStart::HandleStateUpdate(const FHostSpectatorState& State)
 {
-    // Board update (NO hands visible)
-    UE_LOG(LogTemp, Log, TEXT("Scores updated"));
+    UE_LOG(LogTemp, Log, TEXT("Scores updated - Round: %d"), State.CurrentRound);
 }
 
 void AHostSpectatorQuickStart::HandleRoundEnd(const FHostRoundResult& Result)
@@ -813,7 +1037,7 @@ void AHostSpectatorQuickStart::HandleRoundEnd(const FHostRoundResult& Result)
 
 ---
 
-## 10. Test Your Integration
+## 11. Test Your Integration
 
 ### Test Mode
 
@@ -834,11 +1058,12 @@ HostDashboardUI.Instance.Show();
 SocialGameManager.Instance.StartTestSession();
 BuyInModal.Instance.Show(10f, 200f);
 
-// Test host spectator mode (host-only)
+// Test host spectator mode
 HostSpectatorManager.Instance.FetchHostRooms(new HostRoomFilter());
 HostSpectatorView.Instance.Show();
 
 // Test auto-updater
+DeskillzUpdater.Instance.TestUpdateAvailable = true;
 DeskillzUpdater.Instance.CheckForUpdates();
 ```
 
@@ -859,9 +1084,11 @@ config.Environment = DeskillzEnvironment.Production;
 
 ### Pre-Launch Checklist
 
+- [ ] Game credentials obtained (Game ID, API Key, API Secret)
 - [ ] SDK initializes without errors
 - [ ] Deep link match launch works
-- [ ] Score submission succeeds
+- [ ] Score submission succeeds with HMAC hash
+- [ ] Return to main app works correctly
 - [ ] Auto-updater checks work
 - [ ] Private room creation/joining works
 - [ ] Host registration works (if applicable)
@@ -869,6 +1096,7 @@ config.Environment = DeskillzEnvironment.Production;
 - [ ] Spectator mode works (if applicable)
 - [ ] Test in both Sandbox and Production
 - [ ] No test/debug code in release build
+- [ ] API Secret not committed to source control
 
 ---
 
@@ -888,7 +1116,13 @@ config.Environment = DeskillzEnvironment.Production;
 
 | Version | Changes |
 |---------|---------|
-| 2.6.0 | Added Host, Social Game, and Spectator quick starts |
+| 2.6.0 | Added Credentials-First Flow (Step 0), Host, Social Game, and Spectator quick starts |
 | 2.5.0 | Added Auto-Updater section |
 | 2.2.0 | Added Private Rooms |
-| 2.0.0 | Deep Link architecture |
+| 2.0.0 | Deep Link architecture, Centralized Lobby |
+
+---
+
+**SDK Version:** 2.6.0  
+**Guide Version:** 2.0  
+**Last Updated:** January 2026

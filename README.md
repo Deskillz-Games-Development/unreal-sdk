@@ -15,16 +15,17 @@
 </p>
 
 <p align="center">
-  <a href="#installation">Installation</a> â€¢
-  <a href="#quick-start">Quick Start</a> â€¢
-  <a href="#features">Features</a> â€¢
-  <a href="#auto-updater">Auto-Updater</a> â€¢
-  <a href="#private-rooms">Private Rooms</a> â€¢
-  <a href="#host-system">Host System</a> â€¢
-  <a href="#social-games">Social Games</a> â€¢
-  <a href="#host-spectator-mode">Host Spectator Mode</a> [B]
-  <a href="#navigation-deep-links">Navigation Links</a> â€¢
-  <a href="#documentation">Documentation</a> â€¢
+  <a href="#getting-your-credentials">Get Credentials</a> |
+  <a href="#installation">Installation</a> |
+  <a href="#quick-start">Quick Start</a> |
+  <a href="#features">Features</a> |
+  <a href="#auto-updater">Auto-Updater</a> |
+  <a href="#private-rooms">Private Rooms</a> |
+  <a href="#host-system">Host System</a> |
+  <a href="#social-games">Social Games</a> |
+  <a href="#spectator-mode">Spectator Mode</a> |
+  <a href="#navigation-deep-links">Navigation Links</a> |
+  <a href="#documentation">Documentation</a> |
   <a href="#support">Support</a>
 </p>
 
@@ -71,6 +72,89 @@ The Deskillz Unreal Engine SDK enables game developers to integrate their UE gam
 - **Platforms:** iOS 12+, Android 5.0+ (API 21)
 - **Build Tools:** Xcode 14+ (iOS), Android NDK (Android)
 - **C++ Standard:** C++17 or later
+
+---
+
+## Getting Your Credentials
+
+**IMPORTANT: Start here before installation!**
+
+The SDK requires a Game ID and API Key to initialize. With our **Credentials-First Flow**, you can get these instantly.
+
+### Step 1: Access Developer Portal
+
+1. Go to [deskillz.games/developer](https://deskillz.games/developer)
+2. Connect your wallet or create an account
+3. Click **"Register New Game"**
+
+### Step 2: Generate Credentials Instantly
+
+1. Enter your **Game Name** (e.g., "Block Puzzle Master")
+2. Select your **Target Platform** (Android / iOS / Both)
+3. Click **"Generate Game ID & API Key"**
+
+### Step 3: You Receive Immediately
+
+| Credential | Example | Purpose |
+|------------|---------|---------|
+| **Game ID** | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | Unique identifier |
+| **API Key** | `dsk_live_abc123def456ghi789...` | Public key for SDK |
+| **API Secret** | `dss_xyz789abc456def123...` | Private key for HMAC signing |
+| **Deep Link Scheme** | `deskillz-blockpuzzlemaster` | Custom URL scheme |
+
+### CRITICAL: Save Your API Secret!
+
+> **WARNING:** Your API Secret is displayed **only once**. Copy it immediately and store it securely:
+> - Save it in a secure password manager
+> - Never commit it to source control
+> - You cannot retrieve it later - you would need to regenerate
+
+### Step 4: Create DeskillzConfig Data Asset
+
+1. In Unreal Editor: **Content Browser > Right Click > Miscellaneous > Data Asset**
+2. Select `DeskillzConfigAsset` as the class
+3. Name it `DeskillzConfig` and place in `Content/Config/`
+4. Enter your credentials:
+
+```cpp
+// Content/Config/DeskillzConfig.uasset should contain:
+UCLASS()
+class UDeskillzConfigAsset : public UDataAsset
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY(EditAnywhere, Category = "Credentials")
+    FString GameId = TEXT("YOUR_GAME_ID");
+    
+    UPROPERTY(EditAnywhere, Category = "Credentials")
+    FString ApiKey = TEXT("YOUR_API_KEY");
+    
+    UPROPERTY(EditAnywhere, Category = "Security")
+    FString ApiSecret = TEXT("YOUR_API_SECRET"); // For HMAC signing
+    
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    FString DeepLinkScheme = TEXT("deskillz-yourgame");
+    
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    bool bUseSandbox = true;
+};
+```
+
+**Add to .gitignore:**
+```
+# Deskillz credentials - do not commit!
+Content/Config/DeskillzConfig.uasset
+```
+
+### Step 5: Complete Registration (When Ready)
+
+After verifying your SDK integration works, return to Developer Portal to:
+1. Complete the full game submission form
+2. Upload screenshots, icon, and video
+3. Upload your APK/IPA build
+4. Submit for review
+
+---
 
 ## Installation
 
@@ -282,7 +366,7 @@ void AMyGameMode::OnScoreSubmitted(bool bSuccess, const FString& Message)
 | [USERS] **Private Rooms** | Play with friends using room codes |
 | [HOST] **Host System** | 6-tier host program with revenue sharing (NEW v2.6) |
 | [CARDS] **Social Games** | Rake-based games with buy-ins (NEW v2.6) |
-| [EYE] **Host Spectator Mode** | Hosts monitor their social rooms (NEW v2.6) |
+| [EYE] **Spectator Mode** | Watch live games in progress (NEW v2.6) |
 | [LIGHTNING] **Real-time Sync** | Sub-100ms latency multiplayer |
 | [SHIELD] **Anti-Cheat** | Score encryption and validation |
 | [DOWNLOAD] **Auto-Updater** | Forced and optional app updates |
@@ -499,81 +583,74 @@ TArray<float> AMyGameMode::GetPresetAmounts()
 
 ---
 
-## Host Spectator Mode (NEW in v2.6)
+## Spectator Mode (NEW in v2.6)
 
-Allow hosts to monitor their private social rooms without participating.
+Allow users to watch live games in progress without participating.
 
-> **Important:** This is a **host-only** feature. Only the creator of a private social room can spectate it. General public spectating is not available. Hosts can see the game board and scores but **NOT player hands** (anti-cheat protection).
-
-### Host Spectator Limitations
-
-| Can See | Cannot See |
-|---------|------------|
-| Game board/table state | Player hands/tiles |
-| Current scores/points | Hidden cards |
-| Player turn indicator | Private player info |
-| Chat messages | - |
-| Round results | - |
-
-### Host Spectator Manager Usage
+### Spectator Manager Usage
 
 ```cpp
-#include "Host/DeskillzHostSpectatorManager.h"
+#include "Spectator/DeskillzSpectatorManager.h"
 
-void AMyGameMode::InitializeHostSpectatorMode()
+void AMyGameMode::InitializeSpectatorMode()
 {
-    // Host must be authenticated first
-    UDeskillzHostSpectatorManager* Manager = UDeskillzHostSpectatorManager::Get();
+    UDeskillzSpectatorManager* Manager = UDeskillzSpectatorManager::Get();
     Manager->Initialize();
     
-    // Bind events for YOUR rooms
-    Manager->OnRoomsFetched.AddDynamic(this, &AMyGameMode::OnHostRoomsFetched);
-    Manager->OnGameStateUpdated.AddDynamic(this, &AMyGameMode::OnGameStateUpdated);
-    Manager->OnRoundEnded.AddDynamic(this, &AMyGameMode::OnRoundEnded);
-    Manager->OnRoomSwitched.AddDynamic(this, &AMyGameMode::OnRoomSwitched);
+    // Bind events
+    Manager->OnRoomsFetched.AddDynamic(this, &AMyGameMode::OnRoomsFetched);
+    Manager->OnJoinedAsSpectator.AddDynamic(this, &AMyGameMode::OnJoinedAsSpectator);
+    Manager->OnRoundStarted.AddDynamic(this, &AMyGameMode::OnRoundStarted);
+    Manager->OnPlayerAction.AddDynamic(this, &AMyGameMode::OnPlayerAction);
+    Manager->OnPotUpdated.AddDynamic(this, &AMyGameMode::OnPotUpdated);
 }
 
-void AMyGameMode::FetchMyHostRooms()
+void AMyGameMode::FetchSpectatorRooms()
 {
-    FDeskillzHostRoomFilter Filter;
-    Filter.GameCategory = EDeskillzGameCategory::Social; // Social rooms only
-    Filter.bIsActive = true;
+    FDeskillzSpectatorRoomFilter Filter;
+    Filter.GameId = TEXT("poker-texas-holdem");
+    Filter.MinPlayers = 2;
+    Filter.bActiveOnly = true;
     
-    UDeskillzHostSpectatorManager::Get()->FetchHostRooms(Filter);
+    UDeskillzSpectatorManager::Get()->FetchSpectatorRooms(Filter);
 }
 
-void AMyGameMode::OnHostRoomsFetched(const TArray<FDeskillzHostRoomInfo>& Rooms)
+void AMyGameMode::OnRoomsFetched(const TArray<FDeskillzSpectatorRoomInfo>& Rooms)
 {
-    for (const FDeskillzHostRoomInfo& Room : Rooms)
+    for (const FDeskillzSpectatorRoomInfo& Room : Rooms)
     {
-        UE_LOG(LogDeskillz, Log, TEXT("%s: %d/%d players"),
-            *Room.RoomName, Room.CurrentPlayers, Room.MaxPlayers);
+        UE_LOG(LogDeskillz, Log, TEXT("%s: %d/%d - Pot: $%.2f"),
+            *Room.RoomName, Room.CurrentPlayers, Room.MaxPlayers, Room.CurrentPot);
     }
 }
 
-void AMyGameMode::SpectateMyRoom(const FString& RoomId)
+void AMyGameMode::JoinAsSpectator(const FString& RoomId)
 {
-    // Join YOUR room (see board, NOT hands)
-    UDeskillzHostSpectatorManager::Get()->SpectateRoom(RoomId);
+    UDeskillzSpectatorManager::Get()->JoinAsSpectator(RoomId);
 }
 
-void AMyGameMode::SwitchToAnotherRoom(const FString& OtherRoomId)
+void AMyGameMode::ConfigureSpectatorView()
 {
-    // Switch between YOUR rooms (multi-room hosting)
-    UDeskillzHostSpectatorManager::Get()->SwitchRoom(OtherRoomId);
+    UDeskillzSpectatorManager* Manager = UDeskillzSpectatorManager::Get();
+    
+    // View modes
+    Manager->SetViewMode(EDeskillzSpectatorViewMode::FollowPlayer);
+    Manager->FollowPlayer(PlayerId);
+    Manager->CycleToNextPlayer();
+    
+    // Playback controls
+    Manager->SetPlaybackSpeed(2.0f);
+    Manager->PausePlayback();
+    Manager->ResumePlayback();
 }
 
-void AMyGameMode::OnGameStateUpdated(const FDeskillzHostSpectatorState& State)
+void AMyGameMode::OnPlayerAction(
+    const FString& PlayerId,
+    const FString& ActionType,
+    float Value)
 {
-    // Update board (NO hands visible - anti-cheat)
-    UE_LOG(LogDeskillz, Log, TEXT("Round %d - Scores updated"),
-        State.CurrentRound);
-}
-
-void AMyGameMode::OnRoundEnded(int32 RoundNumber, const FString& WinnerId)
-{
-    UE_LOG(LogDeskillz, Log, TEXT("Round %d winner: %s"),
-        RoundNumber, *WinnerId);
+    UE_LOG(LogDeskillz, Log, TEXT("Player %s: %s $%.2f"),
+        *PlayerId, *ActionType, Value);
 }
 ```
 
@@ -781,9 +858,9 @@ deskillz-unreal-sdk/
 |   |   |   |   +-- DeskillzRakeCalculator.h       # Rake calculation
 |   |   |   |   +-- DeskillzBuyInManager.h         # Buy-in/rebuy/cashout
 |   |   |   |   +-- DeskillzSocialTypes.h          # Social data structures
-|   |   |   +-- Spectator/                         # NEW in v2.6 (Host-only)
-|   |   |   |   +-- DeskillzHostSpectatorManager.h # Host spectator mode
-|   |   |   |   +-- DeskillzHostSpectatorTypes.h   # Host spectator data
+|   |   |   +-- Spectator/                         # NEW in v2.6
+|   |   |   |   +-- DeskillzSpectatorManager.h     # Spectator mode
+|   |   |   |   +-- DeskillzSpectatorTypes.h       # Spectator data structures
 |   |   |   +-- Widgets/
 |   |   |   |   +-- Rooms/
 |   |   |   |   |   +-- DeskillzRoomListWidget.h
@@ -803,10 +880,10 @@ deskillz-unreal-sdk/
 |   |   |   |   |   +-- DeskillzSocialGameSettingsWidget.h
 |   |   |   |   |   +-- DeskillzTurnTimerWidget.h
 |   |   |   |   |   +-- DeskillzPauseRequestWidget.h
-|   |   |   |   +-- Spectator/                     # NEW in v2.6 (Host-only)
-|   |   |   |   |   +-- DeskillzHostSpectatorViewWidget.h
-|   |   |   |   |   +-- DeskillzHostScorePanelWidget.h
-|   |   |   |   |   +-- DeskillzHostRoomSwitcherWidget.h
+|   |   |   |   +-- Spectator/                     # NEW in v2.6
+|   |   |   |   |   +-- DeskillzSpectatorViewWidget.h
+|   |   |   |   |   +-- DeskillzSpectatorScorePanelWidget.h
+|   |   |   |   |   +-- DeskillzRoomSwitcherWidget.h
 |   |   |   +-- Lobby/
 |   |   |   |   +-- DeepLinkHandler.h
 |   |   |   |   +-- DeskillzBridge.h
@@ -826,8 +903,8 @@ deskillz-unreal-sdk/
 |   |   |   |   +-- DeskillzSocialGameManager.cpp
 |   |   |   |   +-- DeskillzRakeCalculator.cpp
 |   |   |   |   +-- DeskillzBuyInManager.cpp
-|   |   |   +-- Spectator/                         # NEW in v2.6 (Host-only)
-|   |   |   |   +-- DeskillzHostSpectatorManager.cpp
+|   |   |   +-- Spectator/                         # NEW in v2.6
+|   |   |   |   +-- DeskillzSpectatorManager.cpp
 |   |   |   +-- Widgets/
 |   |   |   |   +-- Host/                          # NEW in v2.6
 |   |   |   |   |   +-- DeskillzHostDashboardWidget.cpp
@@ -842,10 +919,10 @@ deskillz-unreal-sdk/
 |   |   |   |   |   +-- DeskillzSocialGameSettingsWidget.cpp
 |   |   |   |   |   +-- DeskillzTurnTimerWidget.cpp
 |   |   |   |   |   +-- DeskillzPauseRequestWidget.cpp
-|   |   |   |   +-- Spectator/                     # NEW in v2.6 (Host-only)
-|   |   |   |   |   +-- DeskillzHostSpectatorViewWidget.cpp
-|   |   |   |   |   +-- DeskillzHostScorePanelWidget.cpp
-|   |   |   |   |   +-- DeskillzHostRoomSwitcherWidget.cpp
+|   |   |   |   +-- Spectator/                     # NEW in v2.6
+|   |   |   |   |   +-- DeskillzSpectatorViewWidget.cpp
+|   |   |   |   |   +-- DeskillzSpectatorScorePanelWidget.cpp
+|   |   |   |   |   +-- DeskillzRoomSwitcherWidget.cpp
 +-- Content/
 |   +-- Widgets/
 |   +-- Materials/
@@ -916,8 +993,8 @@ All SDK features are exposed to Blueprints:
 - Add Player
 - Process Buy In
 - Calculate Rake
-- Spectate Host Room
-- Switch Host Room
+- Join As Spectator
+- Set View Mode
 - Check For Updates
 - Simulate Deep Link
 ```
@@ -951,8 +1028,8 @@ UDeskillzHostManager::Get()->Initialize(TEXT("test-host-id"));
 // Test social games (NEW in v2.6)
 UDeskillzSocialGameManager::Get()->StartTestSession();
 
-// Test host spectator mode (NEW in v2.6) - Host-only feature
-UDeskillzHostSpectatorManager::Get()->FetchHostRooms(FDeskillzHostRoomFilter());
+// Test spectator mode (NEW in v2.6)
+UDeskillzSpectatorManager::Get()->FetchSpectatorRooms(FDeskillzSpectatorRoomFilter());
 
 // Test auto-updater
 UDeskillzUpdater::Get()->CheckForUpdates();
@@ -968,7 +1045,7 @@ UDeskillzUpdater::Get()->CheckForUpdates();
 - [Private Rooms Guide](https://docs.deskillz.games/unreal/private-rooms)
 - [Host System Guide](https://docs.deskillz.games/unreal/host-system)
 - [Social Games Guide](https://docs.deskillz.games/unreal/social-games)
-- [Host Spectator Mode Guide](https://docs.deskillz.games/unreal/host-spectator)
+- [Spectator Mode Guide](https://docs.deskillz.games/unreal/spectator)
 - [Auto-Updater Guide](https://docs.deskillz.games/unreal/updater)
 - [Widget Customization](https://docs.deskillz.games/unreal/widgets)
 - [Troubleshooting](https://docs.deskillz.games/unreal/troubleshooting)
@@ -990,11 +1067,11 @@ See [CHANGELOG.md](./CHANGELOG.md) for version history.
 - **NEW:** DeskillzRakeCalculator with tiered rake structure
 - **NEW:** DeskillzBuyInManager for buy-in/rebuy/cashout flows
 - **NEW:** Social Game UI widgets (6 headers + 6 implementations)
-- **NEW:** DeskillzHostSpectatorManager for host room monitoring (host-only)
-- **NEW:** Host Spectator UI widgets (3 headers + 3 implementations)
+- **NEW:** DeskillzSpectatorManager for live game viewing
+- **NEW:** Spectator UI widgets (3 headers + 3 implementations)
 - **NEW:** 44 total new files for Private Room Enhancement
 - Revenue sharing system (50%-75% based on tier)
-- Real-time WebSocket updates for host spectator mode
+- Real-time WebSocket updates for spectators
 - Pause/resume functionality for social games
 - Full Blueprint support for all new features
 

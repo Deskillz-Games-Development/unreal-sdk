@@ -4,6 +4,8 @@
 
 ## Table of Contents
 
+- [Getting Started](#getting-started) - NEW in v2.6
+- [Developer Portal REST API](#developer-portal-rest-api) - NEW in v2.6
 - [Core Classes](#core-classes)
 - [Match Classes](#match-classes)
 - [Security Classes](#security-classes)
@@ -19,6 +21,281 @@
 - [UI Classes](#ui-classes)
 - [Enums](#key-enums)
 - [Structs](#key-structs)
+
+---
+
+## Getting Started
+
+### Credentials-First Flow (NEW in v2.6)
+
+Before writing any code, you need your Game ID and API credentials. With our **Credentials-First Flow**, you can get these instantly without completing the full registration form.
+
+#### Step 1: Generate Credentials
+
+1. Go to [Developer Portal](https://deskillz.games/developer)
+2. Click **"Register New Game"**
+3. Enter your **Game Name** and select **Platform**
+4. Click **"Generate Game ID & API Key"**
+
+#### Step 2: You Receive Immediately
+
+| Credential | Example | Purpose |
+|------------|---------|---------|
+| **Game ID** | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | Unique identifier for SDK |
+| **API Key** | `dsk_live_abc123def456ghi789jkl012mno345pqr678` | Public key for authentication |
+| **API Secret** | `dss_xyz789abc456def123ghi012jkl345mno678pqr901stu234` | Private key for HMAC signing |
+| **Deep Link Scheme** | `deskillz-yourgamename` | Custom URL scheme for app launching |
+
+> **CRITICAL: Save Your API Secret!**
+> Your API Secret is displayed **only once**. Copy it immediately and store it securely.
+> Never commit it to source control. If lost, you must regenerate (invalidating the old key).
+
+#### Step 3: Configure Your SDK
+
+**Unity (DeskillzConfig.cs):**
+```csharp
+[CreateAssetMenu(fileName = "DeskillzConfig", menuName = "Deskillz/Config")]
+public class DeskillzConfig : ScriptableObject
+{
+    [Header("Credentials (from Developer Portal)")]
+    public string GameId = "YOUR_GAME_ID";
+    public string ApiKey = "YOUR_API_KEY";
+    
+    [Header("Security (keep secure!)")]
+    public string ApiSecret = "YOUR_API_SECRET"; // For HMAC signing
+    
+    [Header("Settings")]
+    public string DeepLinkScheme = "deskillz-yourgame";
+    public DeskillzEnvironment Environment = DeskillzEnvironment.Sandbox;
+}
+```
+
+**Unreal (DeskillzConfigAsset.h):**
+```cpp
+UCLASS()
+class UDeskillzConfigAsset : public UDataAsset
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY(EditAnywhere, Category = "Credentials")
+    FString GameId = TEXT("YOUR_GAME_ID");
+    
+    UPROPERTY(EditAnywhere, Category = "Credentials")
+    FString ApiKey = TEXT("YOUR_API_KEY");
+    
+    UPROPERTY(EditAnywhere, Category = "Security")
+    FString ApiSecret = TEXT("YOUR_API_SECRET"); // For HMAC signing
+    
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    FString DeepLinkScheme = TEXT("deskillz-yourgame");
+    
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    bool bUseSandbox = true;
+};
+```
+
+**Add to .gitignore:**
+```
+# Deskillz credentials - do not commit!
+Assets/Resources/DeskillzConfig.asset
+Content/Config/DeskillzConfig.uasset
+```
+
+---
+
+## Developer Portal REST API
+
+These endpoints allow programmatic access to the Developer Portal for game registration and credential management.
+
+**Base URL:** `https://api.deskillz.games/api/v1`
+
+### POST /developer/games/draft
+
+Create a draft game and receive credentials immediately.
+
+**Request:**
+```json
+{
+  "name": "Block Puzzle Master",
+  "platform": "BOTH"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "gameId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Block Puzzle Master",
+  "slug": "block-puzzle-master",
+  "status": "DRAFT",
+  "apiKey": "dsk_live_abc123def456ghi789jkl012mno345pqr678",
+  "apiSecret": "dss_xyz789abc456def123ghi012jkl345mno678pqr901stu234",
+  "environment": "sandbox",
+  "deepLinkScheme": "deskillz-blockpuzzlemaster",
+  "createdAt": "2026-01-20T12:00:00.000Z",
+  "message": "Credentials generated! Use the Game ID and API Key in your Unity/Unreal SDK."
+}
+```
+
+> **Warning:** `apiSecret` is shown only once! Save it immediately.
+
+**Unity Example:**
+```csharp
+using UnityEngine.Networking;
+using System.Text;
+
+public async Task<DraftGameResponse> CreateDraftGame(string gameName, string platform = "BOTH")
+{
+    var request = new { name = gameName, platform = platform };
+    string json = JsonUtility.ToJson(request);
+    
+    using (var www = new UnityWebRequest(
+        "https://api.deskillz.games/api/v1/developer/games/draft", "POST"))
+    {
+        www.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
+        www.downloadHandler = new DownloadHandlerBuffer();
+        www.SetRequestHeader("Content-Type", "application/json");
+        www.SetRequestHeader("Authorization", "Bearer " + authToken);
+        
+        await www.SendWebRequest();
+        
+        var response = JsonUtility.FromJson<DraftGameResponse>(www.downloadHandler.text);
+        
+        Debug.Log("Game ID: " + response.gameId);
+        Debug.Log("API Secret: " + response.apiSecret); // SAVE THIS NOW!
+        
+        return response;
+    }
+}
+```
+
+**Unreal Example:**
+```cpp
+void UDeveloperAPI::CreateDraftGame(const FString& GameName, const FString& Platform)
+{
+    TSharedRef<IHttpRequest> Request = FHttpModule::Get().CreateRequest();
+    Request->SetURL(TEXT("https://api.deskillz.games/api/v1/developer/games/draft"));
+    Request->SetVerb(TEXT("POST"));
+    Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+    Request->SetHeader(TEXT("Authorization"), FString::Printf(TEXT("Bearer %s"), *AuthToken));
+    
+    TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
+    JsonObject->SetStringField(TEXT("name"), GameName);
+    JsonObject->SetStringField(TEXT("platform"), Platform);
+    
+    FString RequestBody;
+    TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&RequestBody);
+    FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer);
+    
+    Request->SetContentAsString(RequestBody);
+    Request->OnProcessRequestComplete().BindUObject(this, &UDeveloperAPI::OnDraftGameCreated);
+    Request->ProcessRequest();
+}
+```
+
+### GET /developer/games/drafts
+
+List all draft games for the authenticated developer.
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Block Puzzle Master",
+    "slug": "block-puzzle-master",
+    "status": "DRAFT",
+    "deepLinkScheme": "deskillz-blockpuzzlemaster",
+    "platform": "BOTH",
+    "hasApiKey": true,
+    "apiKeyHint": "...r678",
+    "createdAt": "2026-01-20T12:00:00.000Z"
+  }
+]
+```
+
+### GET /developer/games/:gameId/credentials
+
+Retrieve credentials for an existing game. **Note:** API Secret is NOT included.
+
+**Response (200 OK):**
+```json
+{
+  "gameId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Block Puzzle Master",
+  "status": "DRAFT",
+  "deepLinkScheme": "deskillz-blockpuzzlemaster",
+  "apiKeys": [
+    {
+      "apiKey": "dsk_live_abc123def456ghi789jkl012mno345pqr678",
+      "name": "Default Key",
+      "environment": "sandbox",
+      "createdAt": "2026-01-20T12:00:00.000Z"
+    }
+  ],
+  "createdAt": "2026-01-20T12:00:00.000Z"
+}
+```
+
+### POST /matches/:matchId/score
+
+Submit a score with HMAC security.
+
+**Request:**
+```json
+{
+  "score": 15000,
+  "duration": 180,
+  "timestamp": 1705756800,
+  "nonce": "abc123def456",
+  "hash": "base64-encoded-hmac-sha256-hash"
+}
+```
+
+**HMAC Hash Generation:**
+
+Format: `matchId:score:duration:timestamp:nonce`
+
+**Unity:**
+```csharp
+using System.Security.Cryptography;
+using System.Text;
+
+public string GenerateScoreHash(string matchId, int score, int duration, 
+                                 long timestamp, string nonce, string apiSecret)
+{
+    string data = $"{matchId}:{score}:{duration}:{timestamp}:{nonce}";
+    
+    using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(apiSecret)))
+    {
+        byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+        return Convert.ToBase64String(hash);
+    }
+}
+```
+
+**Unreal:**
+```cpp
+FString UScoreSubmitter::GenerateScoreHash(const FString& MatchId, int32 Score, 
+    int32 Duration, int64 Timestamp, const FString& Nonce, const FString& ApiSecret)
+{
+    FString Data = FString::Printf(TEXT("%s:%d:%d:%lld:%s"), 
+        *MatchId, Score, Duration, Timestamp, *Nonce);
+    
+    TArray<uint8> DataBytes;
+    FTCHARToUTF8 DataConverter(*Data);
+    DataBytes.Append((uint8*)DataConverter.Get(), DataConverter.Length());
+    
+    TArray<uint8> KeyBytes;
+    FTCHARToUTF8 KeyConverter(*ApiSecret);
+    KeyBytes.Append((uint8*)KeyConverter.Get(), KeyConverter.Length());
+    
+    TArray<uint8> HashBytes;
+    FSHA256Signature::HMACSHA256(DataBytes, KeyBytes, HashBytes);
+    
+    return FBase64::Encode(HashBytes);
+}
+```
 
 ---
 
