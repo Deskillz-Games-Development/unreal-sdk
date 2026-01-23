@@ -1,20 +1,22 @@
 # Deskillz SDK - API Reference
 
-**SDK Version: 2.6.0** | Complete API documentation for the Deskillz Unity and Unreal Engine SDKs.
+**SDK Version: 2.8.0** | Complete API documentation for the Deskillz Unity and Unreal Engine SDKs.
 
 ## Table of Contents
 
-- [Getting Started](#getting-started) - NEW in v2.6
-- [Developer Portal REST API](#developer-portal-rest-api) - NEW in v2.6
+- [Getting Started](#getting-started)
+- [Developer Portal REST API](#developer-portal-rest-api)
+- [Authentication Classes](#authentication-classes) - NEW in v2.8!
+- [Scene Controller Classes](#scene-controller-classes) - NEW in v2.8!
 - [Core Classes](#core-classes)
 - [Match Classes](#match-classes)
 - [Security Classes](#security-classes)
 - [Network Classes](#network-classes)
 - [Deep Link Classes](#deep-link-classes)
 - [Private Rooms Classes](#private-rooms-classes)
-- [Host System Classes](#host-system-classes) - NEW in v2.6
-- [Social Game Classes](#social-game-classes) - NEW in v2.6
-- [Spectator Classes](#spectator-classes) - NEW in v2.6
+- [Host System Classes](#host-system-classes)
+- [Social Game Classes](#social-game-classes)
+- [Spectator Classes](#spectator-classes)
 - [Auto-Updater Classes](#auto-updater-classes)
 - [Analytics Classes](#analytics-classes)
 - [Platform Classes](#platform-classes)
@@ -295,6 +297,387 @@ FString UScoreSubmitter::GenerateScoreHash(const FString& MatchId, int32 Score,
     
     return FBase64::Encode(HashBytes);
 }
+```
+
+---
+
+## Authentication Classes
+
+**NEW in v2.8!** Self-Sufficient Authentication for standalone game apps.
+
+### UDeskillzAuth / DeskillzAuth
+
+Authentication manager for email/password and social login.
+
+**Unity (DeskillzAuth.cs):**
+
+| Method | Description |
+|--------|-------------|
+| `Instance` | Get singleton instance |
+| `Initialize()` | Initialize auth system |
+| `LoginWithEmail(email, password, rememberMe)` | Login with email/password |
+| `SignUpWithEmail(email, password, username)` | Register new account |
+| `SocialLogin(provider)` | Login with social provider (Google, Apple, Facebook) |
+| `ForgotPassword(email)` | Request password reset |
+| `Logout()` | Logout current user |
+| `RefreshToken()` | Refresh access token |
+| `ConnectWallet()` | Connect wallet to account |
+| `DisconnectWallet()` | Disconnect wallet |
+| `LinkEmail(email, password)` | Link email to wallet account |
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `IsAuthenticated` | bool | User is logged in |
+| `CurrentUser` | AuthUser | Current user data |
+| `AccessToken` | string | Current access token |
+| `AuthState` | EAuthState | Current auth state |
+
+**Unreal (DeskillzAuth.h):**
+
+```cpp
+UCLASS()
+class DESKILLZSDK_API UDeskillzAuth : public UObject
+{
+    GENERATED_BODY()
+    
+public:
+    static UDeskillzAuth* Get();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void Initialize();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void LoginWithEmail(const FString& Email, const FString& Password, bool bRememberMe = true);
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void SignUpWithEmail(const FString& Email, const FString& Password, const FString& Username);
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void SocialLogin(ESocialProvider Provider);
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void ForgotPassword(const FString& Email);
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void Logout();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void ConnectWallet();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void DisconnectWallet();
+    
+    UFUNCTION(BlueprintPure, Category = "Deskillz|Auth")
+    bool IsAuthenticated() const;
+    
+    UFUNCTION(BlueprintPure, Category = "Deskillz|Auth")
+    FAuthUser GetCurrentUser() const;
+    
+    // Delegates
+    UPROPERTY(BlueprintAssignable, Category = "Deskillz|Auth")
+    FOnLoginSuccess OnLoginSuccess;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Deskillz|Auth")
+    FOnSignUpSuccess OnSignUpSuccess;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Deskillz|Auth")
+    FOnLogout OnLogout;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Deskillz|Auth")
+    FOnAuthError OnAuthError;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Deskillz|Auth")
+    FOnWalletLinked OnWalletLinked;
+    
+    UPROPERTY(BlueprintAssignable, Category = "Deskillz|Auth")
+    FOnWalletDisconnected OnWalletDisconnected;
+};
+```
+
+### Auth Events (NEW in v2.8)
+
+| Event | Parameters | Description |
+|-------|------------|-------------|
+| `OnAuthLoginSuccess` | AuthUser user | Login succeeded |
+| `OnAuthSignUpSuccess` | AuthUser user | Registration succeeded |
+| `OnAuthLogout` | None | User logged out |
+| `OnAuthError` | AuthError error | Auth error occurred |
+| `OnAuthStateChanged` | EAuthState state | Auth state changed |
+| `OnWalletLinked` | string address | Wallet linked to account |
+| `OnWalletDisconnected` | None | Wallet disconnected |
+| `OnPasswordResetSent` | None | Reset email sent |
+
+**Unity Example:**
+```csharp
+using Deskillz;
+
+public class AuthManager : MonoBehaviour
+{
+    void Start()
+    {
+        DeskillzAuth.Instance.Initialize();
+        
+        DeskillzEvents.OnAuthLoginSuccess += OnLoginSuccess;
+        DeskillzEvents.OnAuthSignUpSuccess += OnSignUpSuccess;
+        DeskillzEvents.OnAuthLogout += OnLogout;
+        DeskillzEvents.OnAuthError += OnAuthError;
+        DeskillzEvents.OnWalletLinked += OnWalletLinked;
+        
+        // Check for existing session
+        if (DeskillzAuth.Instance.IsAuthenticated)
+        {
+            Debug.Log($"Welcome back, {DeskillzAuth.Instance.CurrentUser.Username}!");
+        }
+    }
+    
+    public void Login(string email, string password)
+    {
+        DeskillzAuth.Instance.LoginWithEmail(email, password, true);
+    }
+    
+    public void SignUp(string email, string password, string username)
+    {
+        DeskillzAuth.Instance.SignUpWithEmail(email, password, username);
+    }
+    
+    public void SocialLogin(SocialProvider provider)
+    {
+        DeskillzAuth.Instance.SocialLogin(provider);
+    }
+    
+    void OnLoginSuccess(AuthUser user)
+    {
+        Debug.Log($"Login success: {user.Username}");
+        AuthSceneController.Instance.GoToLobby();
+    }
+    
+    void OnSignUpSuccess(AuthUser user)
+    {
+        Debug.Log($"Sign up success: {user.Username}");
+        AuthSceneController.Instance.GoToLobby();
+    }
+    
+    void OnLogout()
+    {
+        Debug.Log("User logged out");
+        AuthSceneController.Instance.GoToAuth();
+    }
+    
+    void OnAuthError(AuthError error)
+    {
+        Debug.LogError($"Auth error: {error.Code} - {error.Message}");
+    }
+    
+    void OnWalletLinked(string address)
+    {
+        Debug.Log($"Wallet linked: {address}");
+    }
+}
+```
+
+**Unreal Example:**
+```cpp
+void AMyGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    UDeskillzAuth::Get()->Initialize();
+    
+    UDeskillzAuth::Get()->OnLoginSuccess.AddDynamic(this, &AMyGameMode::OnLoginSuccess);
+    UDeskillzAuth::Get()->OnSignUpSuccess.AddDynamic(this, &AMyGameMode::OnSignUpSuccess);
+    UDeskillzAuth::Get()->OnLogout.AddDynamic(this, &AMyGameMode::OnLogout);
+    UDeskillzAuth::Get()->OnAuthError.AddDynamic(this, &AMyGameMode::OnAuthError);
+    
+    if (UDeskillzAuth::Get()->IsAuthenticated())
+    {
+        FAuthUser User = UDeskillzAuth::Get()->GetCurrentUser();
+        UE_LOG(LogTemp, Log, TEXT("Welcome back, %s!"), *User.Username);
+    }
+}
+
+void AMyGameMode::OnLoginSuccess(const FAuthUser& User)
+{
+    UE_LOG(LogTemp, Log, TEXT("Login success: %s"), *User.Username);
+    UDeskillzAuthController::Get()->GoToLobby();
+}
+
+void AMyGameMode::OnLogout()
+{
+    UE_LOG(LogTemp, Log, TEXT("User logged out"));
+    UDeskillzAuthController::Get()->GoToAuth();
+}
+```
+
+### Auth REST API Endpoints (NEW in v2.8)
+
+**Base URL:** `https://api.deskillz.games/api/v1`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/register` | Register with email/password |
+| POST | `/auth/login` | Login with email/password |
+| POST | `/auth/social` | Login with social provider |
+| POST | `/auth/forgot-password` | Request password reset |
+| POST | `/auth/reset-password` | Reset password with token |
+| POST | `/auth/wallet/link` | Link wallet to account |
+| POST | `/auth/wallet/disconnect` | Disconnect wallet |
+| POST | `/auth/refresh` | Refresh access token |
+| GET | `/auth/nonce` | Get SIWE nonce for wallet auth |
+
+---
+
+## Scene Controller Classes
+
+**NEW in v2.8!** Scene/Level navigation for self-sufficient architecture.
+
+### UDeskillzAuthController / AuthSceneController
+
+Scene navigation controller for auth flow.
+
+**Unity (AuthSceneController.cs):**
+
+| Method | Description |
+|--------|-------------|
+| `Instance` | Get singleton instance |
+| `Initialize(config)` | Initialize with DeskillzConfig |
+| `GoToAuth()` | Navigate to auth scene |
+| `GoToLobby()` | Navigate to lobby scene |
+| `GoToGame()` | Navigate to game scene |
+| `GoToLoading()` | Navigate to loading scene |
+| `ShowLogin()` | Show login UI panel |
+| `ShowSignUp()` | Show sign up UI panel |
+| `ShowForgotPassword()` | Show forgot password UI panel |
+| `GetCurrentScene()` | Get current scene name |
+
+**Unity Example:**
+```csharp
+using Deskillz;
+using UnityEngine;
+
+public class GameBootstrap : MonoBehaviour
+{
+    [SerializeField] private DeskillzConfig config;
+    
+    void Start()
+    {
+        // Initialize SDK
+        DeskillzSDK.Instance.Initialize(new DeskillzSDKConfig
+        {
+            GameId = config.GameId,
+            ApiKey = config.ApiKey,
+            SelfSufficientMode = true
+        });
+        
+        DeskillzSDK.Instance.OnInitialized += OnSDKReady;
+    }
+    
+    void OnSDKReady()
+    {
+        // Initialize auth
+        DeskillzAuth.Instance.Initialize();
+        
+        // Initialize scene controller
+        AuthSceneController.Instance.Initialize(config);
+        
+        // Navigate based on auth state
+        if (DeskillzAuth.Instance.IsAuthenticated)
+        {
+            AuthSceneController.Instance.GoToLobby();
+        }
+        else
+        {
+            AuthSceneController.Instance.GoToAuth();
+        }
+    }
+}
+```
+
+**Unreal (DeskillzAuthController.h):**
+
+```cpp
+UCLASS()
+class DESKILLZSDK_API UDeskillzAuthController : public UObject
+{
+    GENERATED_BODY()
+    
+public:
+    static UDeskillzAuthController* Get();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void Initialize();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void GoToAuth();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void GoToLobby();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void GoToGame();
+    
+    UFUNCTION(BlueprintCallable, Category = "Deskillz|Auth")
+    void GoToLoading();
+    
+    UFUNCTION(BlueprintPure, Category = "Deskillz|Auth")
+    FString GetCurrentLevel() const;
+};
+```
+
+**Unreal Example:**
+```cpp
+void AMyGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+    
+    // Initialize auth controller
+    UDeskillzAuthController::Get()->Initialize();
+    
+    // Navigate based on auth state
+    if (UDeskillzAuth::Get()->IsAuthenticated())
+    {
+        UDeskillzAuthController::Get()->GoToLobby();
+    }
+    else
+    {
+        UDeskillzAuthController::Get()->GoToAuth();
+    }
+}
+```
+
+### Scene Configuration (NEW in v2.8)
+
+Configure scene names in your DeskillzConfig:
+
+**Unity:**
+```csharp
+[CreateAssetMenu(fileName = "DeskillzConfig", menuName = "Deskillz/Config")]
+public class DeskillzConfig : ScriptableObject
+{
+    // ... existing fields ...
+    
+    [Header("Self-Sufficient Architecture (NEW in v2.8)")]
+    public bool SelfSufficientMode = true;
+    public string AuthSceneName = "AuthScene";
+    public string LobbySceneName = "LobbyScene";
+    public string GameSceneName = "GameScene";
+    public string LoadingSceneName = "LoadingScene";
+}
+```
+
+**Unreal:**
+```cpp
+// In UDeskillzConfigAsset
+UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
+bool bSelfSufficientMode = true;
+
+UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
+FString AuthLevelName = TEXT("/Game/Maps/AuthLevel");
+
+UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
+FString LobbyLevelName = TEXT("/Game/Maps/LobbyLevel");
+
+UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
+FString GameLevelName = TEXT("/Game/Maps/GameLevel");
 ```
 
 ---
@@ -1557,6 +1940,8 @@ struct FSpectatorAction
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.8.0 | Jan 2026 | Self-Sufficient Authentication (DeskillzAuth, AuthSceneController), email/password login, social login, optional wallet, scene navigation |
+| 2.7.0 | Jan 2026 | Self-Sufficient Architecture introduction |
 | 2.6.0 | Jan 2026 | Added Host System, Social Games, Spectator Mode |
 | 2.5.0 | Jan 2025 | Added Auto-Updater (DeskillzUpdater, DeskillzUpdaterUI) |
 | 2.2.0 | Dec 2024 | Added Private Rooms (UDeskillzRooms, UDeskillzPrivateRoomUI) |

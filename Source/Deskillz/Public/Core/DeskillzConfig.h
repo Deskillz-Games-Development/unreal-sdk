@@ -64,7 +64,7 @@ struct DESKILLZ_API FDeskillzEndpoints
 	
 	/** Base API URL (auto-set based on environment) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Endpoints")
-	FString BaseUrl = TEXT("https://api.deskillz.games/v1");
+	FString BaseUrl = TEXT("https://api.deskillz.games/api/v1");
 	
 	/** WebSocket URL for real-time features */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Endpoints")
@@ -84,14 +84,14 @@ struct DESKILLZ_API FDeskillzEndpoints
 		switch (Environment)
 		{
 			case EDeskillzEnvironment::Production:
-				Endpoints.BaseUrl = TEXT("https://api.deskillz.games/v1");
+				Endpoints.BaseUrl = TEXT("https://api.deskillz.games/api/v1");
 				Endpoints.WebSocketUrl = TEXT("wss://ws.deskillz.games");
 				Endpoints.CdnUrl = TEXT("https://cdn.deskillz.games");
 				break;
 				
 			case EDeskillzEnvironment::Sandbox:
 				Endpoints.BaseUrl = TEXT("https://sandbox-api.deskillz.games/v1");
-				Endpoints.WebSocketUrl = TEXT("wss://sandbox-ws.deskillz.games");
+				Endpoints.WebSocketUrl = TEXT("https://sandbox-api.deskillz.games/api/v1");
 				Endpoints.CdnUrl = TEXT("https://sandbox-cdn.deskillz.games");
 				break;
 				
@@ -361,6 +361,45 @@ public:
 		meta = (DisplayName = "Simulated Latency", ClampMin = "0", ClampMax = "5000"))
 	int32 SimulatedLatencyMs = 0;
 	
+	 // ========================================================================
+    // Level Configuration (Self-Sufficient Architecture)
+    // ========================================================================
+
+    /** Authentication level/map name */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Levels")
+    FString AuthLevelName = TEXT("/Game/Deskillz/Maps/DeskillzAuth");
+
+    /** Main lobby level/map name */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Levels")
+    FString LobbyLevelName = TEXT("/Game/Deskillz/Maps/DeskillzLobby");
+
+    /** Gameplay level/map name */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Levels")
+    FString GameLevelName = TEXT("/Game/Maps/Game");
+
+    /** Loading/splash level/map name */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Levels")
+    FString LoadingLevelName = TEXT("/Game/Deskillz/Maps/Loading");
+
+    // ========================================================================
+    // Authentication Configuration (Self-Sufficient Architecture)
+    // ========================================================================
+
+    /** Require authentication before accessing lobby */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bRequireAuth = true;
+
+    /** Allow guest/anonymous play (practice mode only) */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bAllowGuestMode = true;
+
+    /** Auto-login if session exists */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bAutoLogin = true;
+
+    /** Remember me enabled by default */
+    UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bRememberMeDefault = true;
 	// ========================================================================
 	// Accessors
 	// ========================================================================
@@ -381,6 +420,25 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Deskillz|Config")
 	FString GetValidationError() const;
 	
+	/**
+     * Get Auth API URL (with /api/v1/auth prefix)
+     */
+    UFUNCTION(BlueprintPure, Category = "Deskillz|Config")
+    FString GetAuthApiUrl() const
+    {
+        switch (Environment)
+        {
+            case EDeskillzEnvironment::Production:
+                return TEXT("https://api.deskillz.games/api/v1/auth");
+            case EDeskillzEnvironment::Sandbox:
+                return TEXT("https://sandbox-api.deskillz.games/api/v1/auth");
+            case EDeskillzEnvironment::Development:
+                return TEXT("http://localhost:3001/api/v1/auth");
+            default:
+                return TEXT("https://sandbox-api.deskillz.games/api/v1/auth");
+        }
+    }
+
 	// UDeveloperSettings interface
 	virtual FName GetCategoryName() const override { return TEXT("Plugins"); }
 	

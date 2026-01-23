@@ -486,7 +486,270 @@ struct DESKILLZ_API FDeskillzLeaderboardEntry
 	
 	FDeskillzLeaderboardEntry() = default;
 };
+// ============================================================================
+// Authentication Types (Self-Sufficient Architecture)
+// ============================================================================
 
+/**
+ * Authentication state
+ */
+UENUM(BlueprintType)
+enum class EDeskillzAuthState : uint8
+{
+    NotAuthenticated    UMETA(DisplayName = "Not Authenticated"),
+    Authenticating      UMETA(DisplayName = "Authenticating"),
+    Authenticated       UMETA(DisplayName = "Authenticated"),
+    Error               UMETA(DisplayName = "Authentication Error")
+};
+
+/**
+ * Social auth provider
+ */
+UENUM(BlueprintType)
+enum class EDeskillzAuthProvider : uint8
+{
+    Email               UMETA(DisplayName = "Email/Password"),
+    Google              UMETA(DisplayName = "Google"),
+    Apple               UMETA(DisplayName = "Apple"),
+    Facebook            UMETA(DisplayName = "Facebook"),
+    Wallet              UMETA(DisplayName = "Wallet (SIWE)")
+};
+
+/**
+ * User role
+ */
+UENUM(BlueprintType)
+enum class EDeskillzUserRole : uint8
+{
+    Player              UMETA(DisplayName = "Player"),
+    Developer           UMETA(DisplayName = "Developer"),
+    Admin               UMETA(DisplayName = "Admin")
+};
+
+/**
+ * Authenticated user information
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzAuthUser
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString Id;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString Email;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString Username;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString DisplayName;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString AvatarUrl;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    EDeskillzUserRole Role = EDeskillzUserRole::Player;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bEmailVerified = false;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bHasWallet = false;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString WalletAddress;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FDateTime CreatedAt;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FDateTime LastLoginAt;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bTwoFactorEnabled = false;
+    
+    FDeskillzAuthUser() = default;
+    
+    bool IsDeveloper() const { return Role == EDeskillzUserRole::Developer || Role == EDeskillzUserRole::Admin; }
+    bool IsAdmin() const { return Role == EDeskillzUserRole::Admin; }
+    bool IsValid() const { return !Id.IsEmpty(); }
+};
+
+/**
+ * Login request data
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzLoginRequest
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Email;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Password;
+    
+    FDeskillzLoginRequest() = default;
+    
+    FDeskillzLoginRequest(const FString& InEmail, const FString& InPassword)
+        : Email(InEmail), Password(InPassword) {}
+};
+
+/**
+ * Sign up request data
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzSignUpRequest
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Email;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Password;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Username;
+    
+    FDeskillzSignUpRequest() = default;
+    
+    FDeskillzSignUpRequest(const FString& InEmail, const FString& InPassword, const FString& InUsername)
+        : Email(InEmail), Password(InPassword), Username(InUsername) {}
+};
+
+/**
+ * Authentication response
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzAuthResponse
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString AccessToken;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FString RefreshToken;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    FDeskillzAuthUser User;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    bool bIsNewUser = false;
+    
+    UPROPERTY(BlueprintReadOnly, Category = "Deskillz|Auth")
+    int64 ExpiresIn = 0;
+    
+    FDeskillzAuthResponse() = default;
+    
+    bool IsValid() const { return !AccessToken.IsEmpty() && User.IsValid(); }
+};
+
+/**
+ * Social auth request data
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzSocialAuthRequest
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    EDeskillzAuthProvider Provider = EDeskillzAuthProvider::Google;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString IdToken;
+    
+    FDeskillzSocialAuthRequest() = default;
+    
+    FDeskillzSocialAuthRequest(EDeskillzAuthProvider InProvider, const FString& InIdToken)
+        : Provider(InProvider), IdToken(InIdToken) {}
+    
+    FString GetProviderName() const
+    {
+        switch (Provider)
+        {
+            case EDeskillzAuthProvider::Google: return TEXT("google");
+            case EDeskillzAuthProvider::Apple: return TEXT("apple");
+            case EDeskillzAuthProvider::Facebook: return TEXT("facebook");
+            default: return TEXT("email");
+        }
+    }
+};
+
+/**
+ * Wallet link request data
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzWalletLinkRequest
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString WalletAddress;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Signature;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Message;
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Nonce;
+    
+    FDeskillzWalletLinkRequest() = default;
+    
+    FDeskillzWalletLinkRequest(const FString& InAddress, const FString& InSignature, 
+                                const FString& InMessage, const FString& InNonce)
+        : WalletAddress(InAddress), Signature(InSignature), Message(InMessage), Nonce(InNonce) {}
+};
+
+/**
+ * Forgot password request
+ */
+USTRUCT(BlueprintType)
+struct DESKILLZ_API FDeskillzForgotPasswordRequest
+{
+    GENERATED_BODY()
+    
+    UPROPERTY(BlueprintReadWrite, Category = "Deskillz|Auth")
+    FString Email;
+    
+    FDeskillzForgotPasswordRequest() = default;
+    
+    FDeskillzForgotPasswordRequest(const FString& InEmail)
+        : Email(InEmail) {}
+};
+
+// ============================================================================
+// Authentication Delegates
+// ============================================================================
+
+/** Called when login succeeds */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeskillzLoginSuccess, const FDeskillzAuthUser&, User);
+
+/** Called when logout occurs */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeskillzLogout);
+
+/** Called when auth error occurs */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeskillzAuthError, const FString&, ErrorMessage);
+
+/** Called when wallet is connected to account */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeskillzWalletConnected, const FString&, WalletAddress);
+
+/** Called when wallet is disconnected from account */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeskillzWalletDisconnected);
+
+/** Called when sign up succeeds */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeskillzSignUpSuccess, const FDeskillzAuthUser&, User);
+
+/** Called when password reset email is sent */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeskillzPasswordResetSent);
+
+/** Called when auth state changes */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDeskillzAuthStateChangedNew, EDeskillzAuthState, NewState, const FDeskillzAuthUser&, User);
 // ============================================================================
 // Callback Delegates
 // ============================================================================
