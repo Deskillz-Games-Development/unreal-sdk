@@ -1,1385 +1,683 @@
-# Deskillz Unreal Engine SDK
+# Deskillz Unreal SDK
 
-<p align="center">
-  <img src="https://deskillz.games/logo.png" alt="Deskillz.Games" width="200"/>
-</p>
-
-<p align="center">
-  <strong>Integrate competitive tournaments into your Unreal Engine games</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Deskillz-Games-Development/unreal-sdk/releases"><img src="https://img.shields.io/badge/version-2.8.0-blue.svg" alt="Version"></a>
-  <a href="https://www.unrealengine.com"><img src="https://img.shields.io/badge/unreal-4.27%2B%20%7C%205.0%2B-black.svg" alt="Unreal"></a>
-  <a href="https://github.com/Deskillz-Games-Development/unreal-sdk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
-</p>
-
-<p align="center">
-  <a href="#getting-your-credentials">Get Credentials</a> |
-  <a href="#installation">Installation</a> |
-  <a href="#quick-start">Quick Start</a> |
-  <a href="#self-sufficient-authentication">Self-Sufficient Auth</a> |
-  <a href="#features">Features</a> |
-  <a href="#auto-updater">Auto-Updater</a> |
-  <a href="#private-rooms">Private Rooms</a> |
-  <a href="#host-system">Host System</a> |
-  <a href="#social-games">Social Games</a> |
-  <a href="#spectator-mode">Spectator Mode</a> |
-  <a href="#navigation-deep-links">Navigation Links</a> |
-  <a href="#documentation">Documentation</a> |
-  <a href="#support">Support</a>
-</p>
+**Version:** 3.5.2 | **Unreal Engine:** 4.27+ / 5.x | **License:** MIT
 
 ---
 
 ## Overview
 
-The Deskillz Unreal Engine SDK enables game developers to integrate their UE games with the Deskillz.Games competitive gaming platform. Players can compete in skill-based tournaments, create private rooms to play with friends, host social games with rake systems, and win cryptocurrency prizes (BTC, ETH, SOL, XRP, BNB, USDT, USDC).
+The Deskillz Unreal SDK integrates your Unreal Engine game with the Deskillz competitive gaming platform. Players compete in skill-based tournaments, create private rooms, host social games with rake systems, and win cryptocurrency prizes (BNB, USDT, USDC on BSC and TRON networks).
 
-### How It Works (Global Lobby Architecture)
+**Architecture:** Self-sufficient -- everything happens inside your game. Players authenticate, browse tournaments, join matches, and collect prizes without leaving your application.
 
-```
-+------------------------------------------------------------------+
-|                    PLAYER JOURNEY                                |
-+------------------------------------------------------------------+
-|                                                                  |
-|  1. Player opens Deskillz.Games website/app                      |
-|              |                                                   |
-|  2. Player browses Global Lobby                                  |
-|     - Select game                                                |
-|     - Choose tournament/match type                               |
-|     - Join matchmaking queue OR private room                     |
-|              |                                                   |
-|  3. Match found -> Deep link sent to your game                   |
-|     deskillz://launch?matchId=abc123&token=xyz...                |
-|              |                                                   |
-|  4. Your game app opens via deep link                            |
-|              |                                                   |
-|  5. SDK receives match data -> Start gameplay                    |
-|              |                                                   |
-|  6. Player plays -> Score submitted -> Results shown             |
-|                                                                  |
-+------------------------------------------------------------------+
-```
-
-**Key Point:** Matchmaking happens in the Deskillz platform, NOT in your game. Your SDK just needs to:
-1. Handle deep links (navigation + match launch)
-2. Start the match
-3. Submit scores securely
-
-## Requirements
-
-- **Unreal Engine:** 4.27+ or 5.0+
-- **Platforms:** iOS 12+, Android 5.0+ (API 21)
-- **C++ Standard:** C++17
-- **Build Tools:** Xcode 14+ (iOS), Android NDK (Android)
+All public methods use `UFUNCTION(BlueprintCallable)` macros and all data types use `USTRUCT(BlueprintType)` / `UENUM(BlueprintType)`, so the full SDK is accessible from both C++ and Blueprints.
 
 ---
 
-## Getting Your Credentials
+## Requirements
 
-**IMPORTANT: Start here before installation!**
-
-The SDK requires a Game ID and API Key to initialize. With our **Credentials-First Flow**, you can get these instantly.
-
-### Step 1: Access Developer Portal
-
-1. Go to [deskillz.games/developer](https://deskillz.games/developer)
-2. Connect your wallet or create an account
-3. Click **"Register New Game"**
-
-### Step 2: Generate Credentials Instantly
-
-1. Enter your **Game Name** (e.g., "Block Puzzle Master")
-2. Select your **Target Platform** (Android / iOS / Both)
-3. Click **"Generate Game ID & API Key"**
-
-### Step 3: You Receive Immediately
-
-| Credential | Example | Purpose |
-|------------|---------|---------|
-| **Game ID** | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` | Unique identifier |
-| **API Key** | `dsk_live_abc123def456ghi789...` | Public key for SDK |
-| **API Secret** | `dss_xyz789abc456def123...` | Private key for HMAC signing |
-| **Deep Link Scheme** | `deskillz-blockpuzzlemaster` | Custom URL scheme |
-
-### CRITICAL: Save Your API Secret!
-
-> **WARNING:** Your API Secret is displayed **only once**. Copy it immediately and store it securely:
-> - Save it in a secure password manager
-> - Never commit it to source control
-> - You cannot retrieve it later - you would need to regenerate
-
-### Step 4: Create DeskillzConfig Data Asset
-
-1. In Unreal Editor: **Content Browser > Right Click > Miscellaneous > Data Asset**
-2. Select `UDeskillzConfigAsset` as the class
-3. Name it `DeskillzConfig` and place in `Content/Config/`
-4. Enter your credentials:
-
-```cpp
-// Content/Config/DeskillzConfig.uasset should contain:
-UCLASS()
-class UDeskillzConfigAsset : public UDataAsset
-{
-    GENERATED_BODY()
-public:
-    UPROPERTY(EditAnywhere, Category = "Credentials")
-    FString GameId = TEXT("YOUR_GAME_ID");
-    
-    UPROPERTY(EditAnywhere, Category = "Credentials")
-    FString ApiKey = TEXT("YOUR_API_KEY");
-    
-    UPROPERTY(EditAnywhere, Category = "Security")
-    FString ApiSecret = TEXT("YOUR_API_SECRET"); // For HMAC signing
-    
-    UPROPERTY(EditAnywhere, Category = "Settings")
-    FString DeepLinkScheme = TEXT("deskillz-yourgame");
-    
-    UPROPERTY(EditAnywhere, Category = "Settings")
-    bool bUseSandbox = true;
-    
-    // Self-Sufficient Architecture (NEW in v2.8)
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    bool bSelfSufficientMode = true;
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString AuthLevelName = TEXT("/Game/Maps/AuthLevel");
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString LobbyLevelName = TEXT("/Game/Maps/LobbyLevel");
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString GameLevelName = TEXT("/Game/Maps/GameLevel");
-    
-    UPROPERTY(EditAnywhere, Category = "API")
-    FString ApiBaseUrl = TEXT("https://api.deskillz.games/api/v1");
-};
-```
-
-**Add to .gitignore:**
-```
-# Deskillz credentials - do not commit!
-Content/Config/DeskillzConfig.uasset
-```
-
-### Step 5: Complete Registration (When Ready)
-
-After verifying your SDK integration works, return to Developer Portal to:
-1. Complete the full game submission form
-2. Upload screenshots, icon, and video
-3. Upload your APK/IPA build
-4. Submit for review
+- Unreal Engine 4.27+ or 5.x
+- C++ project (Blueprint-only projects can use the Blueprint Function Library)
+- iOS 13+ / Android 7.0+ (API 24+)
+- Deskillz Developer account ([deskillz.games/developer](https://deskillz.games/developer))
 
 ---
 
 ## Installation
 
-### Option 1: Git Clone (Recommended)
+### Git Clone
 
 ```bash
-# Navigate to your project's Plugins folder
-cd YourProject/Plugins
-
-# Clone the SDK
-git clone https://github.com/Deskillz-Games-Development/unreal-sdk.git DeskillzSDK
-
-# Regenerate project files
+cd YourProject/Plugins/
+git clone https://github.com/Deskillz-Games/unreal-sdk.git Deskillz
 ```
 
-### Option 2: Download ZIP
+### Download ZIP
 
-1. Download latest release from [GitHub Releases](https://github.com/Deskillz-Games-Development/unreal-sdk/releases)
-2. Extract to `YourProject/Plugins/DeskillzSDK/`
-3. Regenerate project files
-
-### Option 3: Git Submodule
-
-```bash
-cd YourProject
-git submodule add https://github.com/Deskillz-Games-Development/unreal-sdk.git Plugins/DeskillzSDK
-```
+1. Download from [GitHub Releases](https://github.com/Deskillz-Games/unreal-sdk/releases)
+2. Extract to `YourProject/Plugins/Deskillz/`
 
 ### Setup
 
-1. Enable the plugin in **Edit -> Plugins -> Deskillz SDK**
-2. Add to your `.Build.cs`:
+1. Enable the plugin in **Edit > Plugins > Deskillz SDK**
+2. Create a `DeskillzConfig` Data Asset: **Content Browser > Miscellaneous > Data Asset > DeskillzConfig**
+3. Set **Game ID**, **API Key**, and **Environment**
+4. Add `ADeskillzManager` to your persistent level (or use the Blueprint `BP_DeskillzManager`)
 
-```csharp
-PublicDependencyModuleNames.AddRange(new string[] { "DeskillzSDK" });
+---
+
+## Plugin Structure
+
+```
+Source/Deskillz/
+  Public/
+    Core/
+      DeskillzSDK.h                      - Core SDK subsystem
+      DeskillzConfig.h                   - Configuration Data Asset
+      DeskillzTypes.h                    - Base enums and structs
+      DeskillzTypes_v352.h               - v3.5.2 types, delegates, endpoints [NEW]
+      DeskillzEvents.h                   - Event system
+      DeskillzUpdater.h                  - Auto-updater
+    DeskillzAuth.h                       - Authentication (email, social, wallet)
+    DeskillzAuthController.h             - Scene flow controller
+    DeskillzAuthService.h                - Auth HTTP client
+    DeskillzSessionManager_v352.h        - SSO, session resume, guest mode [NEW]
+    DeskillzTournamentManager_v352.h     - Tournament lifecycle [NEW]
+    DeskillzQuickPlayManager_v352.h      - Quick Play matchmaking [NEW]
+    DeskillzDisputeManager_v352.h        - Dispute system [NEW]
+    DeskillzRoomExtensions_v352.h        - Room buy-in, invites, settlement [NEW]
+    DeskillzWalletManager_v352.h         - Multi-currency wallet [NEW]
+    DeskillzHostExtensions_v352.h        - Host dashboard, capabilities [NEW]
+    Network/
+      DeskillzHttpClient.h               - HTTP with auth, retry, caching
+      DeskillzWebSocket.h                - Real-time WebSocket
+      DeskillzApiEndpoints.h             - REST endpoint strings
+      DeskillzApiService.h               - API request service
+      DeskillzNetworkManager.h           - Connection management
+    Rooms/
+      DeskillzRooms.h                    - Room create, join, leave
+      DeskillzRoomClient.h               - Room WebSocket client
+      DeskillzRoomTypes.h                - Room data types
+    Host/
+      DeskillzHostManager.h              - Host profile, earnings, badges
+      DeskillzHostEvents.h               - Host event delegates
+      DeskillzHostTypes.h                - Host data types
+    Match/
+      DeskillzMatchManager.h             - Match lifecycle
+      DeskillzMatchmaking.h              - Matchmaking queue
+      DeskillzTournamentManager.h        - Legacy tournament manager
+    Security/
+      DeskillzScoreEncryption.h          - HMAC-SHA256 score signing
+      DeskillzSecureSubmitter.h          - Encrypted score submission
+      DeskillzAntiCheat.h                - Anti-cheat detection
+      DeskillzSecurityModule.h           - Security subsystem
+    Social/
+      DeskillzSocialGameManager.h        - Social game sessions
+      DeskillzBuyInManager.h             - Buy-in / rebuy flow
+      DeskillzRakeCalculator.h           - Rake computation
+      DeskillzSocialTypes.h              - Social data types
+      DeskillzSocialEvents.h             - Social event delegates
+    Spectator/
+      DeskillzHostSpectatorManager.h     - Spectator mode
+      DeskillzHostSpectatorTypes.h       - Spectator data types
+      DeskillzHostSpectatorEvents.h      - Spectator events
+    Lobby/
+      DeskillzBridge.h                   - Platform bridge
+      DeskillzDeepLinkHandler.h          - Deep link parsing
+      DeskillzLobbyClient.h              - Lobby API client
+      DeskillzLobbyTypes.h               - Lobby data types
+    Analytics/
+      DeskillzAnalytics.h                - Analytics tracking
+      DeskillzEventTracker.h             - Event tracking
+      DeskillzTelemetry.h                - Telemetry data
+    Platform/
+      DeskillzPlatform.h                 - Platform abstraction
+      DeskillzDeepLink.h                 - Deep link system
+      DeskillzAppLifecycle.h             - App lifecycle hooks
+      DeskillzPushNotifications.h        - Push notification support
+    UI/                                  - Pre-built UMG widgets
+    Blueprints/
+      DeskillzBlueprintLibrary.h         - Blueprint function library
+      DeskillzManager.h                  - Blueprint manager actor
+    Widgets/                             - Widget Blueprints (Host, Rooms, Social, Spectator)
+  Private/                               - Implementation files (.cpp)
+  Tests/                                 - Integration tests
+Content/
+  Blueprints/                            - Blueprint assets (create in editor)
+  Widgets/                               - Widget Blueprint assets (create in editor)
 ```
 
-3. Create a `DeskillzConfig` data asset in your Content folder
-4. Enter your API Key and Game ID (get from [deskillz.games/developer](https://deskillz.games/developer))
+---
 
 ## Quick Start
 
-### 1. Initialize the SDK
+### 1. Initialize
 
 ```cpp
-#include "DeskillzSDK.h"
+#include "Core/DeskillzSDK.h"
 #include "DeskillzAuth.h"
-#include "DeskillzAuthController.h"
-#include "Lobby/DeepLinkHandler.h"
 
 void AMyGameMode::BeginPlay()
 {
     Super::BeginPlay();
-    
-    // Load config
-    UDeskillzConfigAsset* Config = LoadObject<UDeskillzConfigAsset>(
-        nullptr, TEXT("/Game/Config/DeskillzConfig.DeskillzConfig"));
-    
-    if (!Config || Config->GameId.IsEmpty())
-    {
-        UE_LOG(LogTemp, Error, TEXT("Missing Deskillz credentials!"));
-        return;
-    }
-    
-    // Initialize SDK
-    FDeskillzConfig SDKConfig;
-    SDKConfig.GameId = Config->GameId;
-    SDKConfig.ApiKey = Config->ApiKey;
-    SDKConfig.Environment = Config->bUseSandbox 
-        ? EDeskillzEnvironment::Sandbox 
-        : EDeskillzEnvironment::Production;
-    SDKConfig.bSelfSufficientMode = Config->bSelfSufficientMode;
-    SDKConfig.ApiBaseUrl = Config->ApiBaseUrl;
-    
-    UDeskillzSDK::Get()->Initialize(SDKConfig);
     UDeskillzSDK::Get()->OnInitialized.AddDynamic(this, &AMyGameMode::OnSDKReady);
-    UDeskillzSDK::Get()->OnError.AddDynamic(this, &AMyGameMode::OnSDKError);
 }
 
-void AMyGameMode::OnSDKReady()
+void AMyGameMode::OnSDKReady(bool bSuccess, const FDeskillzError& Error)
 {
-    UE_LOG(LogTemp, Log, TEXT("Deskillz SDK Ready!"));
-    
-    // Initialize authentication (NEW in v2.8)
-    UDeskillzAuth::Get()->Initialize();
-    
-    // Bind auth events
-    UDeskillzAuth::Get()->OnLoginSuccess.AddDynamic(this, &AMyGameMode::OnLoginSuccess);
-    UDeskillzAuth::Get()->OnSignUpSuccess.AddDynamic(this, &AMyGameMode::OnSignUpSuccess);
-    UDeskillzAuth::Get()->OnLogout.AddDynamic(this, &AMyGameMode::OnLogout);
-    UDeskillzAuth::Get()->OnAuthError.AddDynamic(this, &AMyGameMode::OnAuthError);
-    
-    // Initialize scene controller
-    UDeskillzAuthController::Get()->Initialize();
-    
-    // Check for existing session
-    if (UDeskillzAuth::Get()->IsAuthenticated())
+    if (bSuccess)
     {
-        FAuthUser User = UDeskillzAuth::Get()->GetCurrentUser();
-        UE_LOG(LogTemp, Log, TEXT("Session restored for: %s"), *User.Username);
-        UDeskillzAuthController::Get()->GoToLobby();
+        UDeskillzAuth::Get()->OnLoginSuccess.AddDynamic(this, &AMyGameMode::OnLoggedIn);
+        if (UDeskillzAuth::Get()->IsAuthenticated())
+            UDeskillzAuthController::Get()->GoToLobby();
+        else
+            UDeskillzAuthController::Get()->GoToAuth();
     }
-    else
-    {
-        UDeskillzAuthController::Get()->GoToAuth();
-    }
-    
-    // Initialize deep link handler
-    UDeepLinkHandler* DeepLinkHandler = UDeepLinkHandler::Get();
-    DeepLinkHandler->Initialize();
-    DeepLinkHandler->OnMatchReady.AddDynamic(this, &AMyGameMode::OnMatchReady);
-    
-    // Check for updates
-    UDeskillzUpdater::Get()->CheckForUpdates();
-    
-    // Process pending deep links (cold start)
-    if (DeepLinkHandler->HasPendingDeepLink())
-    {
-        DeepLinkHandler->ProcessPendingDeepLinks();
-    }
-}
-
-void AMyGameMode::OnLoginSuccess(const FAuthUser& User)
-{
-    UE_LOG(LogTemp, Log, TEXT("Login success: %s"), *User.Username);
-    UDeskillzAuthController::Get()->GoToLobby();
-}
-
-void AMyGameMode::OnSignUpSuccess(const FAuthUser& User)
-{
-    UE_LOG(LogTemp, Log, TEXT("Sign up success: %s"), *User.Username);
-    UDeskillzAuthController::Get()->GoToLobby();
-}
-
-void AMyGameMode::OnLogout()
-{
-    UE_LOG(LogTemp, Log, TEXT("User logged out"));
-    UDeskillzAuthController::Get()->GoToAuth();
-}
-
-void AMyGameMode::OnAuthError(const FAuthError& Error)
-{
-    UE_LOG(LogTemp, Error, TEXT("Auth error: %s - %s"), *Error.Code, *Error.Message);
-}
-
-void AMyGameMode::OnSDKError(const FDeskillzError& Error)
-{
-    UE_LOG(LogTemp, Error, TEXT("SDK Error: %s - %s"), *Error.Code, *Error.Message);
-}
-
-void AMyGameMode::OnMatchReady(const FMatchLaunchData& Data)
-{
-    UE_LOG(LogTemp, Log, TEXT("Match ready: %s"), *Data.MatchId);
-    // Store match data and load game level
-    UDeskillzAuthController::Get()->GoToGame();
-}
-
-void AMyGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-    UDeepLinkHandler* DeepLinkHandler = UDeepLinkHandler::Get();
-    DeepLinkHandler->OnMatchReady.RemoveDynamic(this, &AMyGameMode::OnMatchReady);
-    
-    Super::EndPlay(EndPlayReason);
 }
 ```
 
-### 2. Handle Navigation Deep Links
+### 2. Authentication
 
 ```cpp
-void AMyGameMode::HandleNavigation(EDeskillzNavigationAction Action, 
-    const TMap<FString, FString>& Parameters)
-{
-    switch (Action)
-    {
-        case EDeskillzNavigationAction::Tournaments:
-            UIManager->ShowTournaments();
-            break;
-            
-        case EDeskillzNavigationAction::Wallet:
-            UIManager->ShowWallet();
-            break;
-            
-        case EDeskillzNavigationAction::Profile:
-            UIManager->ShowProfile();
-            break;
-            
-        case EDeskillzNavigationAction::Game:
-            if (Parameters.Contains(TEXT("id")))
-            {
-                UIManager->ShowGameDetails(Parameters[TEXT("id")]);
-            }
-            break;
-            
-        case EDeskillzNavigationAction::Settings:
-            UIManager->ShowSettings();
-            break;
-    }
-}
+#include "DeskillzAuth.h"
+
+// Email login
+UDeskillzAuth::Get()->Login(FDeskillzLoginRequest(TEXT("player@email.com"), TEXT("password")));
+
+// Social login (Google, Apple, Facebook)
+UDeskillzAuth::Get()->SocialLogin(
+    FDeskillzSocialAuthRequest(EDeskillzAuthProvider::Google, IdToken));
+
+// Wallet connection (optional, for crypto transactions)
+UDeskillzAuth::Get()->LinkWallet(
+    FDeskillzWalletLinkRequest(Address, Signature, Message, Nonce));
+
+// Auth events
+UDeskillzAuth::Get()->OnLoginSuccess.AddDynamic(this, &AMyHUD::OnLoggedIn);
+UDeskillzAuth::Get()->OnSignUpSuccess.AddDynamic(this, &AMyHUD::OnSignedUp);
+UDeskillzAuth::Get()->OnLogout.AddDynamic(this, &AMyHUD::OnLoggedOut);
+UDeskillzAuth::Get()->OnAuthError.AddDynamic(this, &AMyHUD::OnAuthError);
+UDeskillzAuth::Get()->OnWalletLinked.AddDynamic(this, &AMyHUD::OnWalletLinked);
 ```
 
 ### 3. Submit Score
 
 ```cpp
-#include "Misc/SecureHash.h"
+#include "Security/DeskillzSecureSubmitter.h"
 
-void AGameController::OnGameOver(int32 FinalScore)
-{
-    float Duration = GetWorld()->GetTimeSeconds() - StartTime;
-    int64 Timestamp = FDateTime::UtcNow().ToUnixTimestamp();
-    FString Nonce = FGuid::NewGuid().ToString(EGuidFormats::DigitsLower);
-    
-    // Generate HMAC hash
-    FString Hash = GenerateScoreHash(MatchData.MatchId, FinalScore, (int32)Duration, Timestamp, Nonce);
-    
-    FScoreSubmissionData ScoreData;
-    ScoreData.MatchId = MatchData.MatchId;
-    ScoreData.Score = FinalScore;
-    ScoreData.Duration = (int32)Duration;
-    ScoreData.Timestamp = Timestamp;
-    ScoreData.Nonce = Nonce;
-    ScoreData.Hash = Hash;
-    
-    UDeskillzAPI::Get()->SubmitScore(ScoreData,
-        FOnScoreSubmitted::CreateLambda([this](const FScoreResult& Result) {
-            if (Result.bSuccess)
-            {
-                UE_LOG(LogTemp, Log, TEXT("Score submitted!"));
-                ReturnToLobby();
-            }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("Submission failed: %s"), *Result.Error);
-                ReturnToLobby();
-            }
-        })
-    );
-}
-
-FString AGameController::GenerateScoreHash(const FString& MatchId, int32 Score, 
-    int32 Duration, int64 Timestamp, const FString& Nonce)
-{
-    // Format: matchId:score:duration:timestamp:nonce
-    FString Data = FString::Printf(TEXT("%s:%d:%d:%lld:%s"), 
-        *MatchId, Score, Duration, Timestamp, *Nonce);
-    
-    // Get API Secret from config
-    UDeskillzConfigAsset* Config = LoadObject<UDeskillzConfigAsset>(
-        nullptr, TEXT("/Game/Config/DeskillzConfig.DeskillzConfig"));
-    
-    // Generate HMAC-SHA256
-    TArray<uint8> DataBytes;
-    FTCHARToUTF8 DataConverter(*Data);
-    DataBytes.Append((uint8*)DataConverter.Get(), DataConverter.Length());
-    
-    TArray<uint8> KeyBytes;
-    FTCHARToUTF8 KeyConverter(*Config->ApiSecret);
-    KeyBytes.Append((uint8*)KeyConverter.Get(), KeyConverter.Length());
-    
-    TArray<uint8> HashBytes;
-    FSHA256Signature::HMACSHA256(DataBytes, KeyBytes, HashBytes);
-    
-    return FBase64::Encode(HashBytes);
-}
-
-void AGameController::ReturnToLobby()
-{
-    UDeskillzAuthController::Get()->GoToLobby();
-}
+// Score is encrypted with HMAC-SHA256 before submission
+UDeskillzSecureSubmitter::Get()->SubmitScore(PlayerScore,
+    FOnDeskillzScoreSubmitted::CreateLambda([](bool bSuccess, const FDeskillzError& Error) {
+        if (bSuccess) UE_LOG(LogTemp, Log, TEXT("Score submitted!"));
+    })
+);
 ```
 
 ---
 
-## Self-Sufficient Authentication (NEW in v2.8)
+## Tournaments
 
-**Your game can now be completely standalone!** Players can login, browse tournaments, and play matches entirely within your app - no external Deskillz app required.
-
-### Architecture Options
-
-| Mode | Description | Best For |
-|------|-------------|----------|
-| **Self-Sufficient** | All features built into your game | New games, better UX |
-| **Centralized Lobby** | Deskillz app handles lobby, your game handles gameplay | Existing integrations |
-
-### Self-Sufficient Setup
+Full lifecycle: browse, register, check-in, play bracket, view results.
 
 ```cpp
-// MyGameMode.h
-#pragma once
-#include "CoreMinimal.h"
-#include "GameFramework/GameModeBase.h"
-#include "DeskillzSDK.h"
-#include "DeskillzAuth.h"
-#include "DeskillzAuthController.h"
-#include "MyGameMode.generated.h"
+#include "DeskillzTournamentManager_v352.h"
 
-UCLASS()
-class AMyGameMode : public AGameModeBase
-{
-    GENERATED_BODY()
-    
-public:
-    virtual void BeginPlay() override;
-    
-private:
-    UFUNCTION()
-    void OnSDKReady();
-    
-    UFUNCTION()
-    void OnLoginSuccess(const FAuthUser& User);
-    
-    UFUNCTION()
-    void OnSignUpSuccess(const FAuthUser& User);
-    
-    UFUNCTION()
-    void OnLogout();
-    
-    UFUNCTION()
-    void OnAuthError(const FAuthError& Error);
-    
-    UFUNCTION()
-    void OnWalletLinked(const FString& Address);
-    
-    UFUNCTION()
-    void OnWalletDisconnected();
-};
+auto* TM = UDeskillzTournamentManager_v352::Get();
 
-// MyGameMode.cpp
-#include "MyGameMode.h"
+// Browse
+TM->GetTournaments({},
+    FOnTournamentListings::CreateLambda([](const TArray<FDeskillzTournamentListing>& List) {
+        for (const auto& T : List)
+            UE_LOG(LogTemp, Log, TEXT("%s - %s %s - %d/%d"), *T.Name,
+                *FDeskillzCurrencyHelper::Format(T.EntryFee, T.Currency),
+                *T.Status, T.CurrentPlayers, T.MaxPlayers);
+    }), OnError);
 
-void AMyGameMode::BeginPlay()
-{
-    Super::BeginPlay();
-    
-    // Load config
-    UDeskillzConfigAsset* Config = LoadObject<UDeskillzConfigAsset>(
-        nullptr, TEXT("/Game/Config/DeskillzConfig.DeskillzConfig"));
-    
-    // Configure SDK for self-sufficient mode
-    FDeskillzConfig SDKConfig;
-    SDKConfig.GameId = Config->GameId;
-    SDKConfig.ApiKey = Config->ApiKey;
-    SDKConfig.bSelfSufficientMode = true;  // Enable self-sufficient
-    SDKConfig.Environment = Config->bUseSandbox 
-        ? EDeskillzEnvironment::Sandbox 
-        : EDeskillzEnvironment::Production;
-    SDKConfig.ApiBaseUrl = Config->ApiBaseUrl;
-    
-    UDeskillzSDK::Get()->Initialize(SDKConfig);
-    UDeskillzSDK::Get()->OnInitialized.AddDynamic(this, &AMyGameMode::OnSDKReady);
-}
+// Three-step enrollment: Register -> Check In -> Play
+TM->Register(TournamentId, OnRegistered, OnError);      // Step 1
+TM->CheckIn(TournamentId, OnCheckedIn, OnError);        // Step 2 (T-30 to T-10 window)
+TM->Leave(TournamentId, OnLeft, OnError);                // Unregister (refunds entry fee)
 
-void AMyGameMode::OnSDKReady()
-{
-    UE_LOG(LogTemp, Log, TEXT("Deskillz SDK Ready!"));
-    
-    // Initialize authentication
-    UDeskillzAuth::Get()->Initialize();
-    
-    // Bind auth events
-    UDeskillzAuth::Get()->OnLoginSuccess.AddDynamic(this, &AMyGameMode::OnLoginSuccess);
-    UDeskillzAuth::Get()->OnSignUpSuccess.AddDynamic(this, &AMyGameMode::OnSignUpSuccess);
-    UDeskillzAuth::Get()->OnLogout.AddDynamic(this, &AMyGameMode::OnLogout);
-    UDeskillzAuth::Get()->OnAuthError.AddDynamic(this, &AMyGameMode::OnAuthError);
-    UDeskillzAuth::Get()->OnWalletLinked.AddDynamic(this, &AMyGameMode::OnWalletLinked);
-    UDeskillzAuth::Get()->OnWalletDisconnected.AddDynamic(this, &AMyGameMode::OnWalletDisconnected);
-    
-    // Initialize scene controller
-    UDeskillzAuthController::Get()->Initialize();
-    
-    // Navigate based on auth state
-    if (UDeskillzAuth::Get()->IsAuthenticated())
-    {
-        FAuthUser User = UDeskillzAuth::Get()->GetCurrentUser();
-        UE_LOG(LogTemp, Log, TEXT("Welcome back, %s!"), *User.Username);
-        UDeskillzAuthController::Get()->GoToLobby();
-    }
-    else
-    {
-        UDeskillzAuthController::Get()->GoToAuth();
-    }
-}
+// Status and bracket
+TM->GetEnrollmentStatus(TournamentId, OnStatus, OnError);
+TM->GetMyRegistrations(OnRegistrations, OnError);
+TM->GetSchedule(TournamentId, OnSchedule, OnError);
+TM->GetMyTableAssignment(TournamentId, OnSeat, OnError);
 
-void AMyGameMode::OnLoginSuccess(const FAuthUser& User)
-{
-    UE_LOG(LogTemp, Log, TEXT("Login success: %s"), *User.Username);
-    UDeskillzAuthController::Get()->GoToLobby();
-}
-
-void AMyGameMode::OnSignUpSuccess(const FAuthUser& User)
-{
-    UE_LOG(LogTemp, Log, TEXT("Account created: %s"), *User.Username);
-    UDeskillzAuthController::Get()->GoToLobby();
-}
-
-void AMyGameMode::OnLogout()
-{
-    UE_LOG(LogTemp, Log, TEXT("User logged out"));
-    UDeskillzAuthController::Get()->GoToAuth();
-}
-
-void AMyGameMode::OnAuthError(const FAuthError& Error)
-{
-    UE_LOG(LogTemp, Error, TEXT("Auth error: %s - %s"), *Error.Code, *Error.Message);
-}
-
-void AMyGameMode::OnWalletLinked(const FString& Address)
-{
-    UE_LOG(LogTemp, Log, TEXT("Wallet linked: %s"), *Address);
-}
-
-void AMyGameMode::OnWalletDisconnected()
-{
-    UE_LOG(LogTemp, Log, TEXT("Wallet disconnected"));
-}
-```
-
-### Login with Email/Password
-
-```cpp
-// LoginWidget.cpp
-void ULoginWidget::OnLoginButtonClicked()
-{
-    FString Email = EmailInput->GetText().ToString().TrimStartAndEnd();
-    FString Password = PasswordInput->GetText().ToString();
-    bool bRememberMe = RememberMeCheckbox->IsChecked();
-    
-    if (Email.IsEmpty() || Password.IsEmpty())
-    {
-        ShowError(TEXT("Please enter email and password"));
-        return;
-    }
-    
-    LoginButton->SetIsEnabled(false);
-    UDeskillzAuth::Get()->Login(Email, Password, bRememberMe);
-}
-
-void ULoginWidget::OnSignUpButtonClicked()
-{
-    UDeskillzAuthController::Get()->ShowSignUp();
-}
-
-void ULoginWidget::OnForgotPasswordClicked()
-{
-    UDeskillzAuthController::Get()->ShowForgotPassword();
-}
-```
-
-### Sign Up
-
-```cpp
-// SignUpWidget.cpp
-void USignUpWidget::OnSignUpButtonClicked()
-{
-    FString Username = UsernameInput->GetText().ToString().TrimStartAndEnd();
-    FString Email = EmailInput->GetText().ToString().TrimStartAndEnd();
-    FString Password = PasswordInput->GetText().ToString();
-    FString ConfirmPassword = ConfirmPasswordInput->GetText().ToString();
-    
-    // Validation
-    if (Username.Len() < 3)
-    {
-        ShowError(TEXT("Username must be at least 3 characters"));
-        return;
-    }
-    
-    if (!Email.Contains(TEXT("@")))
-    {
-        ShowError(TEXT("Please enter a valid email"));
-        return;
-    }
-    
-    if (Password.Len() < 8)
-    {
-        ShowError(TEXT("Password must be at least 8 characters"));
-        return;
-    }
-    
-    if (Password != ConfirmPassword)
-    {
-        ShowError(TEXT("Passwords do not match"));
-        return;
-    }
-    
-    SignUpButton->SetIsEnabled(false);
-    UDeskillzAuth::Get()->SignUp(Email, Password, Username);
-}
-```
-
-### Social Login
-
-```cpp
-// SocialLoginWidget.cpp
-void USocialLoginWidget::OnGoogleLoginClicked()
-{
-    UDeskillzAuth::Get()->SocialLogin(ESocialProvider::Google);
-}
-
-void USocialLoginWidget::OnAppleLoginClicked()
-{
-    // Apple Sign-In (iOS only)
-    #if PLATFORM_IOS
-    UDeskillzAuth::Get()->SocialLogin(ESocialProvider::Apple);
-    #endif
-}
-
-void USocialLoginWidget::OnFacebookLoginClicked()
-{
-    UDeskillzAuth::Get()->SocialLogin(ESocialProvider::Facebook);
-}
-```
-
-### Optional Wallet Connection
-
-Wallet is optional in self-sufficient mode - only needed for paid tournaments.
-
-```cpp
-// ProfileWidget.cpp
-void UProfileWidget::OnConnectWalletClicked()
-{
-    // Opens wallet connection flow (MetaMask, WalletConnect, etc.)
-    UDeskillzAuth::Get()->ConnectWallet();
-}
-
-void UProfileWidget::OnDisconnectWalletClicked()
-{
-    UDeskillzAuth::Get()->DisconnectWallet();
-}
-
-void UProfileWidget::UpdateWalletUI()
-{
-    FAuthUser User = UDeskillzAuth::Get()->GetCurrentUser();
-    
-    if (!User.WalletAddress.IsEmpty())
-    {
-        // Show truncated address
-        FString TruncatedAddress = User.WalletAddress.Left(6) + TEXT("...") + User.WalletAddress.Right(4);
-        WalletAddressText->SetText(FText::FromString(TruncatedAddress));
-        ConnectWalletButton->SetVisibility(ESlateVisibility::Collapsed);
-        DisconnectWalletButton->SetVisibility(ESlateVisibility::Visible);
-    }
-    else
-    {
-        ConnectWalletButton->SetVisibility(ESlateVisibility::Visible);
-        DisconnectWalletButton->SetVisibility(ESlateVisibility::Collapsed);
-    }
-}
-```
-
-### Level Configuration
-
-Configure your levels in DeskillzConfig:
-
-```cpp
-// DeskillzConfigAsset.h
-UCLASS()
-class UDeskillzConfigAsset : public UDataAsset
-{
-    GENERATED_BODY()
-public:
-    // ... existing fields ...
-    
-    // Self-Sufficient Architecture (NEW in v2.8)
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    bool bSelfSufficientMode = true;
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString AuthLevelName = TEXT("/Game/Maps/AuthLevel");
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString LobbyLevelName = TEXT("/Game/Maps/LobbyLevel");
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString GameLevelName = TEXT("/Game/Maps/GameLevel");
-    
-    UPROPERTY(EditAnywhere, Category = "Self-Sufficient")
-    FString LoadingLevelName = TEXT(""); // Optional
-};
+// Socket events
+TM->OnTournamentStarted.AddDynamic(this, &AMyHUD::OnStarted);
+TM->OnTournamentLeft.AddDynamic(this, &AMyHUD::OnLeft);
 ```
 
 ---
 
-## Features
+## Quick Play
 
-| Feature | Description |
-|---------|-------------|
-| [KEY] **Self-Sufficient Auth** | Email/password and social login in-game (NEW v2.8) |
-| [TROPHY] **Tournaments** | Async and real-time competitive matches |
-| [COIN] **Crypto Prizes** | BTC, ETH, SOL, XRP, BNB, USDT, USDC |
-| [USERS] **Private Rooms** | Play with friends using room codes |
-| [HOST] **Host System** | 6-tier host program with revenue sharing |
-| [CARDS] **Social Games** | Rake-based games with buy-ins |
-| [EYE] **Spectator Mode** | Watch live games in progress |
-| [LIGHTNING] **Real-time Sync** | Sub-100ms latency multiplayer |
-| [SHIELD] **Anti-Cheat** | Score encryption and validation |
-| [DOWNLOAD] **Auto-Updater** | Forced and optional app updates |
-| [ROBOT] **NPC Opponents** | AI players for off-peak hours |
-| [CHART] **Analytics** | Built-in telemetry and insights |
-| [OFFLINE] **Offline Support** | Automatic score caching and retry |
-| [LOCK] **Score Encryption** | HMAC-SHA256 signed submission |
-
----
-
-## Auto-Updater
-
-Keep your game up-to-date with automatic version checking:
+Instant matchmaking for esport games + social cash game rooms.
 
 ```cpp
-#include "Core/DeskillzUpdater.h"
+#include "DeskillzQuickPlayManager_v352.h"
 
-void AMyGameMode::BeginPlay()
-{
-    UDeskillzUpdater* Updater = UDeskillzUpdater::Get();
-    Updater->SetCurrentVersion(GetGameVersion(), GetVersionCode());
-    
-    Updater->OnUpdateAvailable.AddDynamic(this, &AMyGameMode::HandleOptionalUpdate);
-    Updater->OnForceUpdateRequired.AddDynamic(this, &AMyGameMode::HandleForcedUpdate);
-    Updater->OnNoUpdateNeeded.AddDynamic(this, &AMyGameMode::HandleNoUpdate);
-    
-    Updater->CheckForUpdates();
-}
+auto* QP = UDeskillzQuickPlayManager_v352::Get();
 
-void AMyGameMode::HandleOptionalUpdate(const FUpdateInfo& Info)
-{
-    UE_LOG(LogTemp, Log, TEXT("Update available: %s"), *Info.LatestVersion);
-    // Show optional update dialog
-}
+// Esport: Join queue -> Match found -> Launch -> Score -> Results
+FDeskillzQuickPlayJoinParams Params;
+Params.GameId = GameId;
+Params.EntryFee = 1.0;
+Params.Currency = TEXT("USDT_BSC");
+QP->JoinQueue(Params, OnJoined, OnError);
 
-void AMyGameMode::HandleForcedUpdate(const FUpdateInfo& Info)
-{
-    // Block app until user updates
-    UpdaterWidget->ShowForcedUpdateDialog(Info);
-}
+QP->OnQueueMatched.AddDynamic(this, &AMyHUD::OnMatchFound);
+QP->LaunchMatch(MatchSessionId, OnLaunched, OnError);
+QP->SubmitScore(MatchId, 1500, OnScored, OnError);
+QP->GetMatchResults(MatchId, OnResults, OnError);
 
-void AMyGameMode::HandleNoUpdate()
-{
-    UE_LOG(LogTemp, Log, TEXT("App is up to date!"));
-}
+// Social: Create room -> Submit rounds -> Rebuy/CashOut -> End
+QP->CreateSocialRoom(GameId, 0.10, TEXT("USDT_BSC"), 4, OnCreated, OnError);
+QP->SubmitSocialRound(RoomId, PayloadJson, OnSuccess, OnError);
+QP->SocialRebuy(RoomId, 50.0, OnSuccess, OnError);
+QP->SocialCashOut(RoomId, OnSuccess, OnError);
+QP->EndSocialGame(RoomId, OnSuccess, OnError);
 ```
 
 ---
 
 ## Private Rooms
 
-Create and join private rooms for playing with friends:
+Create rooms, invite friends, manage players, handle buy-in/cash-out.
+
+### Basic Room Operations
 
 ```cpp
 #include "Rooms/DeskillzRooms.h"
 
-// Create a room
-void AMyGameMode::CreateRoom()
-{
-    FCreateRoomConfig Config;
-    Config.Name = TEXT("My Private Room");
-    Config.MaxPlayers = 4;
-    Config.GameId = UDeskillzSDK::Get()->GetGameId();
-    Config.EntryFee = 0.0f; // Free room
-    Config.bIsPrivate = true;
-    
-    UDeskillzRooms::Get()->CreateRoom(Config,
-        FOnRoomCreated::CreateLambda([](const FPrivateRoom& Room) {
-            UE_LOG(LogTemp, Log, TEXT("Room created: %s"), *Room.RoomCode);
-        }),
-        FOnRoomError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("Failed: %s"), *Error);
-        })
-    );
-}
+// Create
+FCreateRoomConfig Config;
+Config.Name = TEXT("My Room");
+Config.MaxPlayers = 4;
+Config.GameId = UDeskillzSDK::Get()->GetGameId();
+UDeskillzRooms::Get()->CreateRoom(Config, OnCreated, OnError);
 
-// Join a room
-void AMyGameMode::JoinRoom(const FString& RoomCode)
-{
-    UDeskillzRooms::Get()->JoinRoom(RoomCode,
-        FOnRoomJoined::CreateLambda([](const FPrivateRoom& Room) {
-            UE_LOG(LogTemp, Log, TEXT("Joined room: %s"), *Room.Name);
-        }),
-        FOnRoomError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("Failed: %s"), *Error);
-        })
-    );
-}
+// Join by code
+UDeskillzRooms::Get()->JoinRoom(TEXT("DSKZ-AB3C"), OnJoined, OnError);
+```
+
+### Extended Room Operations (v3.5.2)
+
+```cpp
+#include "DeskillzRoomExtensions_v352.h"
+
+auto* RE = UDeskillzRoomExtensions_v352::Get();
+
+// Create with host role
+FDeskillzCreateEsportRoomOpts Opts;
+Opts.Name = TEXT("Tournament Room");
+Opts.EntryFee = 10.0;
+Opts.HostRole = EDeskillzHostRole::SPECTATOR;
+Opts.MatchMode = EDeskillzEsportMatchMode::BEST_OF_3;
+RE->CreateEsportRoom(Opts, OnSuccess, OnError);
+
+// Social room with win condition
+FDeskillzCreateSocialRoomOpts SOpts;
+SOpts.SocialGameType = TEXT("MAHJONG");
+SOpts.TableStakes = 1.0;
+SOpts.WinCondition = EDeskillzSocialWinCondition::FIXED_ROUNDS;
+SOpts.WinConditionTarget = 8;
+RE->CreateSocialRoom(SOpts, OnSuccess, OnError);
+
+// Financial operations
+RE->BuyIn(RoomId, 100.0, TEXT("USDT_BSC"), OnSuccess, OnError);
+RE->CashOut(RoomId, OnSuccess, OnError);
+RE->Rebuy(RoomId, 50.0, TEXT("USDT_BSC"), OnSuccess, OnError);
+RE->SubmitRound(RoomId, PayloadJson, OnSuccess, OnError);
+RE->TriggerSettlement(RoomId, OnSuccess, OnError);
+
+// Invites
+RE->InvitePlayer(RoomId, TEXT("friend"), TEXT("Come play!"), OnSuccess, OnError);
+RE->RespondToInvite(InviteId, true, OnSuccess, OnError);
+RE->OnInviteReceived.AddDynamic(this, &AMyHUD::OnInvite);
 ```
 
 ---
 
-## Host System (NEW in v2.6)
+## Wallet
 
-Become a verified host to create and manage rooms with revenue sharing:
+Multi-currency wallet with deposit, withdrawal, stats, and transaction history.
 
-### Host Tiers
+```cpp
+#include "DeskillzWalletManager_v352.h"
 
-| Tier | Monthly Rake Required | Host Share |
-|------|----------------------|------------|
-| Bronze | $0 | 50% |
-| Silver | $500 | 55% |
-| Gold | $2,000 | 60% |
-| Platinum | $5,000 | 65% |
-| Diamond | $10,000 | 70% |
-| Elite | $25,000 | 75% |
+auto* W = UDeskillzWalletManager_v352::Get();
+
+// Balances
+W->GetBalance(FOnWalletBalances::CreateLambda([](const TArray<FDeskillzWalletBalanceEntry>& B) {
+    for (const auto& E : B)
+        UE_LOG(LogTemp, Log, TEXT("%s: %.4f ($%.2f)"), *E.Symbol, E.Amount, E.UsdValue);
+}), OnError);
+
+// Deposit / Withdraw
+W->Deposit(TEXT("USDT_BSC"), 100.0, OnSuccess, OnError);
+W->Withdraw(TEXT("USDT_BSC"), 50.0, TEXT("0xWallet..."), OnSuccess, OnError);
+
+// Player data
+W->GetPlayerStats(OnStats, OnError);
+W->GetMatchHistory(1, 20, OnMatches, OnError);
+W->GetGameLeaderboard(GameId, TEXT("all"), 50, OnLeaderboard, OnError);
+W->GetTransactions(20, 0, TEXT(""), TEXT(""), OnSuccess, OnError);
+```
+
+### Currency Formatting
+
+```cpp
+FString Label = FDeskillzCurrencyHelper::GetDisplayName(TEXT("USDT_BSC"));  // "USDT (BSC)"
+FString Fmt = FDeskillzCurrencyHelper::Format(5.50, TEXT("BNB"));           // "5.50 BNB (BSC)"
+```
+
+**Supported currencies:** BNB, USDT (BSC), USDT (TRON), USDC (BSC), USDC (TRON)
+
+---
+
+## Host System
+
+Players become hosts, create rooms, and earn revenue from platform fees and rake.
 
 ```cpp
 #include "Host/DeskillzHostManager.h"
+#include "DeskillzHostExtensions_v352.h"
 
-void AMyGameMode::RegisterAsHost()
-{
-    UDeskillzHostManager::Get()->RegisterAsHost(
-        FOnHostRegistered::CreateLambda([](const FHostProfile& Profile) {
-            UE_LOG(LogTemp, Log, TEXT("Registered as host! Tier: %s"), 
-                *UEnum::GetValueAsString(Profile.Tier));
-        }),
-        FOnHostError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("Registration failed: %s"), *Error);
-        })
-    );
-}
+// Register as host
+UDeskillzHostManager::Get()->RegisterAsHost(OnRegistered, OnError);
 
-void AMyGameMode::CreateHostedRoom()
-{
-    FCreateHostRoomConfig Config;
-    Config.Name = TEXT("Pro Tournament Room");
-    Config.GameCategory = EGameCategory::Esports;
-    Config.EntryFee = 10.0f;
-    Config.EntryCurrency = TEXT("USDT");
-    Config.MaxPlayers = 8;
-    Config.Mode = ERoomMode::Sync;
-    Config.Visibility = ERoomVisibility::PublicListed;
-    
-    UDeskillzHostManager::Get()->CreateHostRoom(Config,
-        FOnRoomCreated::CreateLambda([](const FPrivateRoom& Room) {
-            UE_LOG(LogTemp, Log, TEXT("Host room created: %s"), *Room.RoomCode);
-        }),
-        FOnHostError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
-        })
-    );
-}
+// Full dashboard (v3.5.2 composite endpoint)
+auto* HE = UDeskillzHostExtensions_v352::Get();
+HE->GetDashboard(FOnHostDashboard::CreateLambda([](const FDeskillzHostDashboard& D) {
+    UE_LOG(LogTemp, Log, TEXT("Level %d | Earnings: $%.2f | Rooms: %d"),
+        D.HostLevel, D.TotalEarnings, D.ActiveRoomCount);
+}), OnError);
+
+// Withdraw earnings
+HE->RequestWithdrawal(100.0, TEXT("USDT_BSC"), TEXT("0xWallet..."), OnWithdrawal, OnError);
+
+// Age verification (required for social games with rake)
+HE->CheckAgeVerified(OnAgeStatus, OnError);
 ```
+
+### Host Tiers and Revenue Share
+
+| Tier | Players Required | Revenue Share |
+|------|-----------------|---------------|
+| Bronze | 0 | 15% |
+| Silver | 50 | 18% |
+| Gold | 250 | 20% |
+| Platinum | 1,000 | 23% |
+| Diamond | 5,000 | 25% |
+| Elite | 10,000 | 28% |
 
 ---
 
-## Social Games (NEW in v2.6)
+## Social Games
 
-Create rake-based social games (Big 2, Mahjong, Poker):
+Rake-based social games (Big 2, Mahjong, Thirteen Cards, Dou Dizhu).
 
 ```cpp
 #include "Social/DeskillzSocialGameManager.h"
 #include "Social/DeskillzRakeCalculator.h"
 #include "Social/DeskillzBuyInManager.h"
 
-void AMyGameMode::StartSocialGame()
-{
-    // Initialize managers
-    UDeskillzSocialGameManager::Get()->Initialize(RoomId);
-    UDeskillzBuyInManager::Get()->Initialize(RoomId);
-    
-    // Subscribe to events
-    UDeskillzSocialGameManager::Get()->OnRoundEnded.AddDynamic(
-        this, &AMyGameMode::HandleRoundEnd);
-    UDeskillzBuyInManager::Get()->OnRebuyRequired.AddDynamic(
-        this, &AMyGameMode::HandleRebuyRequired);
-}
+// Initialize for a room
+UDeskillzSocialGameManager::Get()->Initialize(RoomId);
+UDeskillzBuyInManager::Get()->Initialize(RoomId);
 
-void AMyGameMode::EndRound(const FString& WinnerId, float PotAmount)
-{
-    UDeskillzSocialGameManager::Get()->EndRound(WinnerId, PotAmount);
-    
-    // Preview rake distribution
-    float Rake = UDeskillzRakeCalculator::CalculateRakeWithCap(
-        PotAmount, RakePercentage, RakeCap);
-    
-    FRakeDistribution Distribution = UDeskillzRakeCalculator::PreviewRakeDistribution(
-        Rake, HostTier);
-    UE_LOG(LogTemp, Log, TEXT("Host gets: $%.2f"), Distribution.HostShare);
-}
+// Subscribe to events
+UDeskillzSocialGameManager::Get()->OnRoundEnded.AddDynamic(this, &AMyGame::HandleRoundEnd);
+UDeskillzBuyInManager::Get()->OnRebuyRequired.AddDynamic(this, &AMyGame::HandleRebuy);
 
-void AMyGameMode::HandleRoundEnd(const FRoundResult& Result)
-{
-    UE_LOG(LogTemp, Log, TEXT("Round %d won by %s"), 
-        Result.RoundNumber, *Result.WinnerId);
-    UE_LOG(LogTemp, Log, TEXT("Pot: $%.2f, Rake: $%.2f"), 
-        Result.PotAmount, Result.RakeAmount);
-}
+// End a round with pot distribution
+UDeskillzSocialGameManager::Get()->EndRound(WinnerId, PotAmount);
 
-void AMyGameMode::HandleRebuyRequired(const FString& PlayerId, float Timeout)
-{
-    // Show rebuy widget
-    RebuyWidget->Show(PlayerId, Timeout);
-}
+// Rake calculation
+float Rake = UDeskillzRakeCalculator::CalculateRakeWithCap(PotAmount, RakePercent, RakeCap);
+FRakeDistribution Dist = UDeskillzRakeCalculator::PreviewRakeDistribution(Rake, HostTier);
 ```
 
 ---
 
-## Spectator Mode (NEW in v2.6)
+## Spectator Mode
 
-Allow spectators to watch live games:
+Allow spectators to watch live games.
 
 ```cpp
-#include "Spectator/DeskillzSpectatorManager.h"
+#include "Spectator/DeskillzHostSpectatorManager.h"
 
-void AMySpectatorMode::BeginPlay()
-{
-    Super::BeginPlay();
-    
-    UDeskillzSpectatorManager::Get()->Initialize();
-    
-    // Subscribe to events
-    UDeskillzSpectatorManager::Get()->OnGameStateUpdated.AddDynamic(
-        this, &AMySpectatorMode::HandleStateUpdate);
-    UDeskillzSpectatorManager::Get()->OnRoundEnded.AddDynamic(
-        this, &AMySpectatorMode::HandleRoundEnd);
-    UDeskillzSpectatorManager::Get()->OnPlayerAction.AddDynamic(
-        this, &AMySpectatorMode::HandleAction);
-}
+auto* Spec = UDeskillzHostSpectatorManager::Get();
+Spec->JoinAsSpectator(RoomId,
+    FOnSpectatorJoined::CreateLambda([](const FSpectatorState& State) {
+        UE_LOG(LogTemp, Log, TEXT("Spectating room: %s"), *State.RoomId);
+    }), OnError);
 
-void AMySpectatorMode::FetchRooms()
-{
-    FSpectatorRoomFilter Filter;
-    Filter.GameId = CurrentGameId;
-    Filter.GameCategory = EGameCategory::Social;
-    Filter.MinPlayers = 2;
-    
-    UDeskillzSpectatorManager::Get()->FetchSpectatorRooms(Filter,
-        FOnSpectatorRoomsResult::CreateLambda([this](const TArray<FSpectatorRoom>& Rooms) {
-            DisplayRoomList(Rooms);
-        }),
-        FOnSpectatorError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
-        })
-    );
-}
-
-void AMySpectatorMode::JoinAsSpectator(const FString& RoomId)
-{
-    UDeskillzSpectatorManager::Get()->JoinAsSpectator(RoomId,
-        FOnJoinedSpectator::CreateLambda([this](const FSpectatorState& State) {
-            UE_LOG(LogTemp, Log, TEXT("Spectating: %s"), *State.RoomName);
-            UpdateUI(State);
-        }),
-        FOnSpectatorError::CreateLambda([](const FString& Error) {
-            UE_LOG(LogTemp, Error, TEXT("%s"), *Error);
-        })
-    );
-}
-
-void AMySpectatorMode::HandleStateUpdate(const FSpectatorState& State)
-{
-    UpdateGameBoard(State);
-    UpdateScorePanel(State.Scores);
-}
-
-void AMySpectatorMode::HandleRoundEnd(const FSpectatorRoundResult& Result)
-{
-    UE_LOG(LogTemp, Log, TEXT("Round %d winner: %s"), 
-        Result.RoundNumber, *Result.WinnerUsername);
-    ShowRoundSummary(Result);
-}
-
-void AMySpectatorMode::HandleAction(const FSpectatorAction& Action)
-{
-    UE_LOG(LogTemp, Log, TEXT("%s: %s"), *Action.PlayerUsername, *Action.ActionType);
-    AnimateAction(Action);
-}
+Spec->OnGameStateUpdated.AddDynamic(this, &AMyHUD::OnStateUpdate);
+Spec->OnScoreChanged.AddDynamic(this, &AMyHUD::OnScoreChange);
+Spec->SwitchRoom(NewRoomId, OnSwitched, OnError);
+Spec->LeaveSpectator();
 ```
 
 ---
 
-## Navigation Deep Links
+## Disputes
 
-Handle platform navigation requests:
+File disputes against matches with evidence.
 
-| URL | Action | Description |
-|-----|--------|-------------|
-| `deskillz://tournaments` | Tournaments | Show tournament list |
-| `deskillz://wallet` | Wallet | Show wallet/balance |
-| `deskillz://profile` | Profile | Show user profile |
-| `deskillz://settings` | Settings | Show settings |
-| `deskillz://game?id=X` | Game | Show specific game |
-| `deskillz://leaderboard?id=X` | Leaderboard | Show leaderboard |
+```cpp
+#include "DeskillzDisputeManager_v352.h"
+
+auto* DM = UDeskillzDisputeManager_v352::Get();
+
+FDeskillzFileDisputeParams Params;
+Params.DisputeType = TEXT("TOURNAMENT");
+Params.MatchId = MatchId;
+Params.Reason = TEXT("Cheating");
+Params.Description = TEXT("Opponent used auto-clicker");
+DM->FileDispute(Params, OnDispute, OnError);
+
+DM->GetMyDisputes(TEXT(""), OnDisputes, OnError);
+DM->AddEvidence(DisputeId, Evidence, OnSuccess, OnError);
+
+// Last match auto-suggest (stored locally for 7 days)
+FDeskillzLastMatchContext Last = DM->GetLastMatch();
+```
 
 ---
 
-## SDK Structure
+## Game Capabilities
 
+Query what your game supports (configured in Developer Portal).
+
+```cpp
+#include "DeskillzHostExtensions_v352.h"
+
+auto* HE = UDeskillzHostExtensions_v352::Get();
+HE->GetGameCapabilities(GameId,
+    FOnGameCapabilities::CreateLambda([](const FDeskillzGameCapabilities& Caps) {
+        UE_LOG(LogTemp, Log, TEXT("1v1: %d, FFA: %d, Max tournament: %d"),
+            Caps.bSupports1v1, Caps.bSupportsFFA, Caps.MaxTournamentSize);
+    }), OnError);
+
+// Cached capabilities always available (defaults before API responds)
+FDeskillzGameCapabilities Current = HE->CachedCapabilities;
 ```
-DeskillzSDK/
-+-- Source/
-|   +-- DeskillzSDK/
-|   |   +-- Public/
-|   |   |   +-- Core/
-|   |   |   |   +-- DeskillzSDK.h
-|   |   |   |   +-- DeskillzConfig.h
-|   |   |   |   +-- DeskillzEvents.h
-|   |   |   |   +-- DeskillzNetwork.h
-|   |   |   |   +-- DeskillzUpdater.h
-|   |   |   +-- Auth/                    # NEW in v2.8
-|   |   |   |   +-- DeskillzAuth.h
-|   |   |   |   +-- DeskillzAuthController.h
-|   |   |   |   +-- AuthTypes.h
-|   |   |   +-- Match/
-|   |   |   |   +-- MatchController.h
-|   |   |   |   +-- MatchTypes.h
-|   |   |   +-- Security/
-|   |   |   |   +-- ScoreEncryption.h
-|   |   |   |   +-- AntiCheat.h
-|   |   |   +-- Lobby/
-|   |   |   |   +-- DeepLinkHandler.h
-|   |   |   |   +-- NavigationTypes.h
-|   |   |   +-- Rooms/
-|   |   |   |   +-- DeskillzRooms.h
-|   |   |   |   +-- RoomTypes.h
-|   |   |   +-- Host/                    # NEW in v2.6
-|   |   |   |   +-- DeskillzHostManager.h
-|   |   |   |   +-- HostTypes.h
-|   |   |   +-- Social/                  # NEW in v2.6
-|   |   |   |   +-- DeskillzSocialGameManager.h
-|   |   |   |   +-- DeskillzRakeCalculator.h
-|   |   |   |   +-- DeskillzBuyInManager.h
-|   |   |   +-- Spectator/               # NEW in v2.6
-|   |   |   |   +-- DeskillzSpectatorManager.h
-|   |   |   |   +-- SpectatorTypes.h
-|   |   |   +-- Widgets/
-|   |   |       +-- Rooms/
-|   |   |       +-- Host/
-|   |   |       +-- Social/
-|   |   |       +-- Spectator/
-|   |   +-- Private/
-|   |       +-- (Implementation files)
-+-- Resources/
-+-- DeskillzSDK.uplugin
+
+---
+
+## Session Management
+
+SSO token handoff, active session resume, and guest mode.
+
+```cpp
+#include "DeskillzSessionManager_v352.h"
+
+auto* SM = UDeskillzSessionManager_v352::Get();
+
+// SSO consumed automatically from launch URL
+SM->OnSSOAuthenticated.AddDynamic(this, &AMyHUD::OnSSO);
+
+// Check for active session (reconnect after crash/restart)
+SM->CheckForActiveSession(FOnActiveSession::CreateLambda(
+    [](const FDeskillzActiveSessionPayload& S) {
+        if (S.bHasActiveSession)
+            UE_LOG(LogTemp, Log, TEXT("Resuming %s: %s"), *S.Type, *S.RoomCode);
+    }));
+
+// Guest mode (browse only, no paid features)
+SM->EnableGuestMode();
+bool bCan = SM->CanPerformAction(TEXT("joinTournament")); // false
 ```
+
+---
+
+## Score Encryption
+
+Scores are signed with HMAC-SHA256 to prevent tampering.
+
+```cpp
+#include "Security/DeskillzScoreEncryption.h"
+#include "Security/DeskillzSecureSubmitter.h"
+
+// Automatic encryption on submit (recommended)
+UDeskillzSecureSubmitter::Get()->SubmitScore(Score, OnSubmitted);
+
+// Manual signing if needed
+FString Sig = UDeskillzScoreEncryption::SignScore(MatchId, Score, Timestamp);
+bool bValid = UDeskillzScoreEncryption::VerifyScore(MatchId, Score, Timestamp, Sig);
+```
+
+---
+
+## Blueprint Integration
+
+All SDK features are accessible from Blueprints via `UDeskillzBlueprintLibrary`:
+
+- **Initialize Deskillz** / **Is Deskillz Initialized** / **Shutdown Deskillz**
+- **Get Tournaments** / **Enter Tournament** / **Leave Tournament**
+- **Start Matchmaking** / **Cancel Matchmaking**
+- **Submit Score** / **Add Score** / **Get Current Score**
+- **Get Wallet Balance** / **Get All Balances**
+- **Show Tournament List** / **Show Matchmaking UI** / **Show Results** / **Show Wallet**
+
+Use `BP_DeskillzManager` Actor Blueprint for drag-and-drop setup in your level.
+
+---
+
+## Pre-Built UI Widgets
+
+The SDK includes UMG widget base classes ready for customization:
+
+| Widget | Description |
+|--------|-------------|
+| DeskillzTournamentListWidget | Tournament browser with filtering |
+| DeskillzMatchmakingWidget | Matchmaking progress display |
+| DeskillzResultsWidget | Match results and rankings |
+| DeskillzWalletWidget | Multi-currency wallet display |
+| DeskillzLeaderboardWidget | Tournament leaderboard |
+| DeskillzHUDWidget | In-game score/timer overlay |
+| DeskillzLoginWidget | Email/password login form |
+| DeskillzSignUpWidget | Registration form |
+| DeskillzHostDashboardWidget | Host earnings and tier progress |
+| DeskillzPrivateRoomUI | Room lobby with player cards |
+| DeskillzBuyInModalWidget | Buy-in confirmation dialog |
+| DeskillzCashOutModalWidget | Cash-out confirmation dialog |
+| DeskillzRebuyModalWidget | Rebuy prompt dialog |
+| DeskillzHostSpectatorViewWidget | Spectator view with room switcher |
+
+Create Widget Blueprints extending these classes in `Content/Widgets/`. All widgets support theming via `UDeskillzUIManager::Get()->SetTheme()`.
+
+---
+
+## Auto-Updater
+
+The SDK includes an auto-update system that checks for new versions.
+
+```cpp
+#include "Core/DeskillzUpdater.h"
+
+UDeskillzUpdater::Get()->CheckForUpdates(
+    FOnUpdateAvailable::CreateLambda([](const FString& NewVersion, const FString& Changelog) {
+        UE_LOG(LogTemp, Log, TEXT("Update available: %s"), *NewVersion);
+    })
+);
+```
+
+---
+
+## Configuration
+
+Create a `DeskillzConfig` Data Asset in the Unreal Editor.
+
+| Property | Description | Default |
+|----------|-------------|---------|
+| GameId | Your Game ID from Developer Portal | (required) |
+| ApiKey | Your API Key from Developer Portal | (required) |
+| Environment | Production / Sandbox / Development | Sandbox |
+| bAutoInitialize | Initialize on BeginPlay | true |
+| bTestMode | Enable test mode (no real money) | false |
+| LogLevel | Verbose / Log / Warning / Error | Log |
+| bSelfSufficientMode | All features in your app | true |
+| AuthSceneName | Level for login UI | "Auth" |
+| LobbySceneName | Level for tournament lobby | "Lobby" |
+| GameSceneName | Level for gameplay | "Game" |
 
 ---
 
 ## Platform Setup
 
-### iOS Configuration
+### iOS
 
-Add to `Info.plist`:
+Add URL scheme to `Info.plist`:
+
 ```xml
 <key>CFBundleURLTypes</key>
 <array>
     <dict>
         <key>CFBundleURLSchemes</key>
-        <array>
-            <string>deskillz-yourgame</string>
-        </array>
-        <key>CFBundleURLName</key>
-        <string>com.yourstudio.yourgame</string>
+        <array><string>deskillz</string></array>
     </dict>
 </array>
 ```
 
-### Android Configuration
+### Android
 
-Add to `AndroidManifest.xml`:
+Add intent filter to `AndroidManifest.xml`:
+
 ```xml
-<activity android:name="com.epicgames.unreal.GameActivity">
-    <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="deskillz-yourgame" />
-    </intent-filter>
-</activity>
+<intent-filter>
+    <action android:name="android.intent.action.VIEW"/>
+    <category android:name="android.intent.category.DEFAULT"/>
+    <category android:name="android.intent.category.BROWSABLE"/>
+    <data android:scheme="deskillz" android:host="launch"/>
+</intent-filter>
 ```
 
 ---
 
 ## Test Mode
 
-Test your integration without real currency:
-
 ```cpp
-// Test SDK initialization
-UDeskillzSDK::Get()->EnableTestMode(true);
-
-// Test navigation deep links
-UDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://tournaments"));
-UDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://wallet"));
-
-// Test match launch
-UDeepLinkHandler::Get()->SimulateDeepLink(TEXT("deskillz://launch?matchId=test&token=test"));
-
-// Test room UI
-UDeskillzPrivateRoomUI::Get()->ShowRoomList();
-UDeskillzPrivateRoomUI::Get()->ShowCreateRoom();
-
-// Test auto-updater
-UDeskillzUpdater::Get()->CheckForUpdates();
-
-// Test host system (NEW in v2.6)
-UDeskillzHostManager::Get()->Initialize(TEXT("test-host-id"));
-
-// Test social games (NEW in v2.6)
-UDeskillzSocialGameManager::Get()->StartTestSession();
-
-// Test spectator mode (NEW in v2.6)
-UDeskillzSpectatorManager::Get()->FetchSpectatorRooms(FSpectatorRoomFilter());
-
-// Test auth (NEW in v2.8)
-UDeskillzAuth::Get()->Initialize();
-UDeskillzAuthController::Get()->GoToAuth();
+// Set bTestMode = true in DeskillzConfig Data Asset, or:
+UDeskillzSDK::Get()->StartTestMatch(EDeskillzMatchType::Asynchronous, 120);
 ```
 
----
-
-## Documentation
-
-- [Quick Start Guide](https://docs.deskillz.games/unreal/quickstart)
-- [API Reference](https://docs.deskillz.games/unreal/api)
-- [Multiplayer Guide](https://docs.deskillz.games/unreal/multiplayer)
-- [Deep Link Integration](https://docs.deskillz.games/unreal/deep-links)
-- [Private Rooms Guide](https://docs.deskillz.games/unreal/private-rooms)
-- [Host System Guide](https://docs.deskillz.games/unreal/host-system)
-- [Social Games Guide](https://docs.deskillz.games/unreal/social-games)
-- [Spectator Mode Guide](https://docs.deskillz.games/unreal/spectator)
-- [Auto-Updater Guide](https://docs.deskillz.games/unreal/updater)
-- [Custom UI Guide](https://docs.deskillz.games/unreal/custom-ui)
-- [Troubleshooting](https://docs.deskillz.games/unreal/troubleshooting)
-
-## Sample Project
-
-Check out our sample game implementation:
-[Deskillz Unreal Sample](https://github.com/Deskillz-Games-Development/unreal-sample)
-
----
-
-## Changelog
-
-See [CHANGELOG.md](./CHANGELOG.md) for version history.
-
-### v2.8.0 (January 2026)
-- **NEW:** Self-Sufficient Authentication (`UDeskillzAuth`)
-- **NEW:** Scene Flow Controller (`UDeskillzAuthController`)
-- **NEW:** Email/password login and registration
-- **NEW:** Social login (Google, Apple, Facebook)
-- **NEW:** Optional wallet connection (for paid tournaments)
-- **NEW:** Auth events (OnLoginSuccess, OnSignUpSuccess, OnLogout, OnAuthError)
-- **NEW:** Wallet events (OnWalletLinked, OnWalletDisconnected)
-- **NEW:** Level configuration in DeskillzConfig
-- **NEW:** Token persistence and auto-refresh
-- Games can now be completely standalone - no external app required
-
-### v2.7.0 (January 2026)
-- **NEW:** Self-Sufficient Architecture foundation
-- **NEW:** In-game lobby support
-- **NEW:** Level navigation system
-- Architecture options: Self-Sufficient vs Centralized Lobby
-
-### v2.6.0 (January 2025)
-- **NEW:** Host System with 6-tier progression
-- **NEW:** UDeskillzHostManager for host registration and management
-- **NEW:** Host Dashboard UI widgets (5 files)
-- **NEW:** Social Game Manager for rake-based games
-- **NEW:** UDeskillzRakeCalculator with tiered rake structure
-- **NEW:** UDeskillzBuyInManager for buy-in/rebuy/cashout flows
-- **NEW:** Social Game UI widgets (6 files)
-- **NEW:** UDeskillzSpectatorManager for live game viewing
-- **NEW:** Spectator UI widgets (3 files)
-- **NEW:** 44 total new files for Private Room Enhancement
-- Revenue sharing system (50%-75% based on tier)
-- Real-time WebSocket updates for spectators
-- Pause/resume functionality for social games
-
-### v2.5.1 (January 2025)
-- Fixed duplicate class definitions
-- README URL corrections
-
-### v2.5.0 (January 2025)
-- Enhanced README documentation
-- SDK testing procedures
-- APK hosting improvements
-
-### v2.3.0 (January 2025)
-- **NEW:** Auto-Updater (`UDeskillzUpdater`)
-- **NEW:** Forced vs optional update support
-- **NEW:** Remember skipped versions
-- **NEW:** Version comparison utilities
-- APK hosting integration with Cloudflare R2
-
-### v2.2.0 (December 2024)
-- **NEW:** Private Rooms API (`UDeskillzRooms`)
-- **NEW:** Pre-built Room Widgets (6 components)
-- **NEW:** Real-time WebSocket for rooms
-- **NEW:** Room events (join, leave, ready, chat, countdown)
-- Room list with search, filter, and sort
-- Room lobby with player cards and ready status
-- Host controls (start, cancel, kick)
-
-### v2.1.0 (December 2024)
-- Deep link improvements
-- Bug fixes and stability
-
-### v2.0.0 (December 2024)
-- **NEW:** Navigation deep links (`OnNavigationReceived`)
-- **NEW:** Simplified match launch (`OnMatchLaunchReceived`)
-- **NEW:** `SimulateDeepLink()` for testing
-- **NEW:** `EDeskillzNavigationAction` enum
-- Improved deep link parsing
-- Better error handling
+Test mode uses local data and does not connect to production servers.
 
 ---
 
 ## Troubleshooting
 
-### Deep links not working
-1. Verify URL schemes are configured correctly in platform settings
-2. Check app is properly signed
-3. Test with: `adb shell am start -a android.intent.action.VIEW -d "deskillz://tournaments"`
-4. Enable logging to see incoming deep links
+**SDK not initializing:** Verify DeskillzConfig Data Asset exists and is assigned. Check Output Log.
 
-### Navigation events not firing
-1. Ensure `UDeepLinkHandler::Get()->Initialize()` is called first
-2. Verify event bindings before processing
-3. Check `HasPendingDeepLink()` and call `ProcessPendingDeepLinks()`
-4. Test with `SimulateDeepLink()` first
+**Blueprint nodes not appearing:** Rebuild the project after adding the plugin. Verify plugin is enabled.
 
-### Room UI not showing
-1. Ensure `UDeskillzRooms::Get()->Initialize()` is called
-2. Check that widgets are properly created
-3. Verify WebSocket connection is established
-4. Test with `UDeskillzPrivateRoomUI::Get()->ShowRoomList()`
+**Auth not working:** Check API key and Game ID. Verify network connectivity.
 
-### Auto-updater not checking
-1. Verify `SetCurrentVersion()` is called with correct values
-2. Check network connectivity
-3. Ensure Game ID is configured in DeskillzConfig
-4. Enable logging to see API responses
+**WebSocket not connecting:** Check WebSocket URL matches environment. Check firewall.
 
-### Self-Sufficient Auth not working
-1. Verify `bSelfSufficientMode = true` in DeskillzConfig
-2. Check API base URL is correct
-3. Ensure `UDeskillzAuth::Get()->Initialize()` is called
-4. Bind to `OnAuthError` to see error details
-5. Verify email/password meet requirements (8+ chars)
+**Score submission failing:** Confirm match is in progress before submitting. Check ScoreType config.
 
-### Host system not initializing
-1. Ensure user is authenticated first
-2. Call `UDeskillzHostManager::Get()->Initialize(UserId)`
-3. Check for registration errors in callbacks
-4. Verify API connectivity
+**Host system not initializing:** Ensure host profile is created first with RegisterAsHost.
 
-### Social game session errors
-1. Validate session config before starting
-2. Check buy-in amounts are within range
-3. Ensure all players have sufficient balance
-4. Monitor WebSocket connection status
+**Social game session errors:** Verify room is in correct state before submitting rounds.
 
-### Spectator mode not connecting
-1. Verify room exists and is active
-2. Check spectating is enabled for the room
-3. Ensure WebSocket connection is established
-4. Monitor for connection timeout errors
-
-### SDK Not Initializing
-```cpp
-// Check initialization status
-if (!UDeskillzSDK::Get()->IsInitialized())
-{
-    // Verify credentials in DeskillzConfig
-    // Check network connectivity
-    // Enable logging for details
-    UE_LOG(LogTemp, Error, TEXT("SDK failed to initialize!"));
-}
-```
-
-### iOS build errors
-- Ensure Xcode 14+ is installed
-- Check iOS deployment target is 12.0+
-- Verify signing certificates
-
-### Android build errors
-- Check Min SDK is 21+
-- Verify NDK is properly configured
-- Check for duplicate AndroidManifest entries
-
----
-
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 2.8.0 | Jan 2026 | Self-Sufficient Authentication (UDeskillzAuth, UDeskillzAuthController), email/password login, social login, optional wallet |
-| 2.7.0 | Jan 2026 | Self-Sufficient Architecture introduction |
-| 2.6.0 | Jan 2026 | Host System, Social Games, Spectator Mode |
-| 2.5.0 | Jan 2025 | Auto-Updater (UDeskillzUpdater) |
-| 2.2.0 | Dec 2024 | Private Rooms (UDeskillzRooms, Widgets) |
-| 2.1.0 | Dec 2024 | Navigation deep links |
-| 2.0.0 | Nov 2024 | Centralized lobby architecture |
-| 1.x | Legacy | SDK-based matchmaking (deprecated) |
+**Spectator not connecting:** Check that the room allows spectators and WebSocket is connected.
 
 ---
 
 ## Support
 
-- **Email:** sdk@deskillz.games
-- **Discord:** [discord.gg/deskillz](https://discord.gg/deskillz)
-- **Documentation:** [docs.deskillz.games](https://docs.deskillz.games)
-- **Developer Portal:** [deskillz.games/developer](https://deskillz.games/developer)
-- **GitHub Issues:** [github.com/Deskillz-Games-Development/unreal-sdk/issues](https://github.com/Deskillz-Games-Development/unreal-sdk/issues)
-
-## License
-
-Copyright (c) 2025 Deskillz.Games. All rights reserved.
-
-MIT License - see [LICENSE](https://github.com/Deskillz-Games-Development/unreal-sdk/blob/main/LICENSE) for details.
+- Developer Portal: [deskillz.games/developer](https://deskillz.games/developer)
+- Documentation: [docs.deskillz.games/unreal](https://docs.deskillz.games/unreal)
+- Email: sdk@deskillz.games
+- Discord: [discord.gg/deskillz](https://discord.gg/deskillz)
 
 ---
 
-<p align="center">
-  Made with love by <a href="https://deskillz.games">Deskillz.Games</a>
-</p>
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
